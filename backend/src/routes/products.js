@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
+import { requireAdmin } from '../auth.js';
 
 export const productsRouter = Router();
 
@@ -40,7 +41,7 @@ productsRouter.get('/:id', async (req, res) => {
 });
 
 /** Yangi mahsulot (Admin) */
-productsRouter.post('/', async (req, res) => {
+productsRouter.post('/', requireAdmin, async (req, res) => {
   const { name, description, imageUrl, oldPrice, newPrice, category } = req.body;
 
   if (!name || !newPrice || !category) {
@@ -64,7 +65,7 @@ productsRouter.post('/', async (req, res) => {
 });
 
 /** Mahsulotni tahrirlash (Admin) */
-productsRouter.put('/:id', async (req, res) => {
+productsRouter.put('/:id', requireAdmin, async (req, res) => {
   const { name, description, imageUrl, oldPrice, newPrice, category } = req.body;
 
   try {
@@ -87,7 +88,7 @@ productsRouter.put('/:id', async (req, res) => {
 });
 
 /** Mahsulotni o'chirish (Admin) */
-productsRouter.delete('/:id', async (req, res) => {
+productsRouter.delete('/:id', requireAdmin, async (req, res) => {
   try {
     await prisma.product.delete({ where: { id: Number(req.params.id) } });
     res.json({ ok: true });

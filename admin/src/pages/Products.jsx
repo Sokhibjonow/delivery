@@ -74,6 +74,7 @@ export default function Products() {
                   <th>Nomi</th>
                   <th>Ta'rifi</th>
                   <th>Kategoriya</th>
+                  <th>O'lchamlar</th>
                   <th>Eski narx</th>
                   <th>Yangi narx</th>
                   <th></th>
@@ -101,6 +102,20 @@ export default function Products() {
 
                     <td>
                       <span className="tag">{p.category}</span>
+                    </td>
+
+                    <td>
+                      {Array.isArray(p.sizes) && p.sizes.length > 0 ? (
+                        <div className="size-tags">
+                          {p.sizes.map((s) => (
+                            <span className="tag" key={s.label}>
+                              {s.label}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="cell-muted">—</span>
+                      )}
                     </td>
 
                     <td className="old-price">

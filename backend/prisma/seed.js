@@ -2,6 +2,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const PIZZA_SIZES = [
+  { label: '25 sm', delta: 0 },
+  { label: '30 sm', delta: 15000 },
+  { label: '35 sm', delta: 28000 },
+];
+
 const products = [
   {
     name: 'Margarita',
@@ -12,6 +18,7 @@ const products = [
     oldPrice: 65000,
     newPrice: 49000,
     category: 'Pizza',
+    sizes: PIZZA_SIZES,
   },
   {
     name: 'Peperoni',
@@ -22,6 +29,7 @@ const products = [
     oldPrice: 89000,
     newPrice: 69000,
     category: 'Pizza',
+    sizes: PIZZA_SIZES,
   },
   {
     name: 'Qazi pizza',
@@ -32,6 +40,7 @@ const products = [
     oldPrice: 110000,
     newPrice: 89000,
     category: 'Pizza',
+    sizes: PIZZA_SIZES,
   },
   {
     name: 'Pishloqli',
@@ -42,6 +51,7 @@ const products = [
     oldPrice: 95000,
     newPrice: 75000,
     category: 'Pizza',
+    sizes: PIZZA_SIZES,
   },
   {
     name: 'Coca-Cola 0.5L',
@@ -51,12 +61,28 @@ const products = [
     oldPrice: null,
     newPrice: 5000,
     category: 'Ichimliklar',
+    sizes: null,
   },
 ];
 
-async function main() {
-  console.log('Seed boshlandi...');
+const toppings = [
+  { name: 'Qo’shimcha mozzarella', price: 8000 },
+  { name: 'Qo’ziqorin', price: 6000 },
+  { name: 'Peperoni kolbasa', price: 10000 },
+  { name: 'Zaytun', price: 5000 },
+  { name: 'Bulg’or qalampiri', price: 4000 },
+  { name: 'Achchiq jalapeño', price: 4000 },
+];
 
+const promos = [
+  { code: 'PIZZA10', type: 'percent', value: 10, minTotal: 0 },
+  { code: 'YANGI20', type: 'amount', value: 20000, minTotal: 100000 },
+];
+
+async function main() {
+  console.log('Seed boshlandi...\n');
+
+  // --- Mahsulotlar ---
   for (const p of products) {
     const existing = await prisma.product.findFirst({ where: { name: p.name } });
 
@@ -69,8 +95,49 @@ async function main() {
     }
   }
 
-  const total = await prisma.product.count();
-  console.log(`Seed tugadi. Bazadagi mahsulotlar soni: ${total}`);
+  // --- Qo'shimchalar ---
+  console.log('');
+  for (const t of toppings) {
+    const existing = await prisma.topping.findFirst({ where: { name: t.name } });
+
+    if (!existing) {
+      await prisma.topping.create({ data: t });
+      console.log(`  qo'shimcha  : ${t.name}`);
+    }
+  }
+
+  // --- Promokodlar ---
+  console.log('');
+  for (const p of promos) {
+    await prisma.promoCode.upsert({
+      where: { code: p.code },
+      update: {},
+      create: p,
+    });
+    console.log(`  promokod    : ${p.code}`);
+  }
+
+  // --- Sozlamalar ---
+  await prisma.setting.upsert({
+    where: { id: 1 },
+    update: {},
+    create: { id: 1 },
+  });
+
+  // --- Eski buyurtmalar holatini yangi tizimga o'tkazish ---
+  const migrated = await prisma.order.updateMany({
+    where: { status: 'kutilmoqda' },
+    data: { status: 'yangi' },
+  });
+
+  if (migrated.count > 0) {
+    console.log(`\n  ${migrated.count} ta eski buyurtma holati yangilandi`);
+  }
+
+  console.log('\nSeed tugadi.');
+  console.log(`  Mahsulotlar  : ${await prisma.product.count()}`);
+  console.log(`  Qo'shimchalar: ${await prisma.topping.count()}`);
+  console.log(`  Promokodlar  : ${await prisma.promoCode.count()}`);
 }
 
 main()

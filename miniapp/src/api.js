@@ -1,10 +1,18 @@
+import { getInitData, getGuestId } from "./telegram.js";
+
 // Vite dev-server /api so'rovlarini backendga (localhost:4000) uzatadi.
 const BASE = "/api";
 
 async function request(path, options = {}) {
   const res = await fetch(BASE + path, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      // Mijozni serverda ishonchli aniqlash uchun
+      "x-init-data": getInitData(),
+      "x-guest-id": getGuestId(),
+      ...(options.headers || {}),
+    },
   });
 
   if (!res.ok) {
@@ -16,19 +24,34 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  getConfig: () => request("/config"),
+  getSettings: () => request("/settings"),
 
   getProducts: () => request("/products"),
 
   getCategories: () => request("/products/categories"),
 
-  auth: (user) =>
-    request("/users/auth", { method: "POST", body: JSON.stringify(user) }),
+  getToppings: () => request("/toppings"),
 
-  getMyOrders: (telegramId) => request(`/orders/my/${telegramId}`),
+  auth: () => request("/users/auth", { method: "POST", body: "{}" }),
+
+  getMyOrders: () => request("/orders/my"),
 
   createOrder: (payload) =>
     request("/orders", { method: "POST", body: JSON.stringify(payload) }),
+
+  getFavorites: () => request("/favorites"),
+
+  toggleFavorite: (productId) =>
+    request("/favorites/toggle", {
+      method: "POST",
+      body: JSON.stringify({ productId }),
+    }),
+
+  checkPromo: (code, subtotal) =>
+    request("/promo/check", {
+      method: "POST",
+      body: JSON.stringify({ code, subtotal }),
+    }),
 };
 
 export function formatPrice(n) {
@@ -45,3 +68,16 @@ export function formatDate(iso) {
     minute: "2-digit",
   });
 }
+
+/** Savatchadagi har bir variant uchun yagona kalit */
+export function cartKey(productId, size, toppingIds) {
+  const tops = [...(toppingIds || [])].sort((a, b) => a - b).join(".");
+  return `${productId}|${size || ""}|${tops}`;
+}
+
+export const ORDER_STEPS = [
+  { key: "yangi", label: "Qabul qilindi", icon: "📝" },
+  { key: "tayyorlanmoqda", label: "Tayyorlanmoqda", icon: "👨‍🍳" },
+  { key: "yolda", label: "Yo'lda", icon: "🛵" },
+  { key: "yetkazildi", label: "Yetkazildi", icon: "✅" },
+];

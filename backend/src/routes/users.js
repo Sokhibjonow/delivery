@@ -1,26 +1,21 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
+import { requireCustomer } from '../telegramAuth.js';
 
 export const usersRouter = Router();
 
-/** Mini App ochilganda mijozni bazaga yozadi / yangilaydi */
-usersRouter.post('/auth', async (req, res) => {
-  const { telegramId, name, phone } = req.body;
-
-  if (!telegramId) return res.status(400).json({ error: 'telegramId kerak' });
+/**
+ * Mini App ochilganda mijozni bazaga yozadi / yangilaydi.
+ * Kim ekanligi so'rov tanasidan emas, tekshirilgan initData'dan olinadi.
+ */
+usersRouter.post('/auth', requireCustomer, async (req, res) => {
+  const { telegramId, name } = req.customer;
 
   const user = await prisma.user.upsert({
-    where: { telegramId: String(telegramId) },
-    update: {
-      name: name ? String(name) : undefined,
-      phone: phone ? String(phone) : undefined,
-    },
-    create: {
-      telegramId: String(telegramId),
-      name: String(name || 'Mehmon'),
-      phone: phone ? String(phone) : null,
-    },
+    where: { telegramId },
+    update: { name },
+    create: { telegramId, name, phone: null },
   });
 
-  res.json(user);
+  res.json({ ...user, verified: req.customer.verified });
 });

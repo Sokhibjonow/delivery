@@ -1,7 +1,16 @@
 import Stories from "../components/Stories.jsx";
 import ProductCard from "../components/ProductCard.jsx";
 
-export default function Home({ user, products, shopName, onOpen, onAdd, goTo }) {
+export default function Home({
+  user,
+  products,
+  settings,
+  onOpen,
+  onAdd,
+  goTo,
+  favoriteIds,
+  onToggleFavorite,
+}) {
   const popular = products.filter((p) => p.category === "Pizza").slice(0, 4);
 
   return (
@@ -14,18 +23,31 @@ export default function Home({ user, products, shopName, onOpen, onAdd, goTo }) 
         <div className="header__avatar">🍕</div>
       </header>
 
+      {!settings.isOpenNow && (
+        <div className="notice notice--warn">
+          🕒 Hozir yopiqmiz. Ish vaqti: {settings.workFrom} — {settings.workTo}
+        </div>
+      )}
+
       <Stories />
 
       <section className="hero">
         <div className="hero__emoji">🍕</div>
         <div className="hero__title">Yangi buyurtma berish</div>
         <p className="hero__text">
-          {shopName} — issiqqina pizzalar 30 daqiqada eshigingizda.
+          {settings.shopName} — issiqqina pizzalar 30 daqiqada eshigingizda.
         </p>
         <button className="btn" onClick={() => goTo("catalog")}>
           Menyuni ochish
         </button>
       </section>
+
+      {settings.freeDeliveryFrom > 0 && (
+        <div className="notice notice--info">
+          🛵 {new Intl.NumberFormat("ru-RU").format(settings.freeDeliveryFrom)}{" "}
+          so'mdan yuqori buyurtmalarga yetkazib berish <b>bepul</b>
+        </div>
+      )}
 
       <section className="section">
         <div className="section__head">
@@ -42,6 +64,8 @@ export default function Home({ user, products, shopName, onOpen, onAdd, goTo }) 
               product={p}
               onOpen={onOpen}
               onAdd={onAdd}
+              isFavorite={favoriteIds.includes(p.id)}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>

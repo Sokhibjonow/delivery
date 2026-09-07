@@ -14,7 +14,8 @@ model User {
   phone      String?
   createdAt  DateTime @default(now())
 
-  orders Order[]
+  orders    Order[]
+  favorites Favorite[]
 }
 
 model Product {
@@ -25,19 +26,71 @@ model Product {
   oldPrice    Int?
   newPrice    Int
   category    String
+  // [{ "label": "25 sm", "delta": 0 }, { "label": "30 sm", "delta": 15000 }]
+  sizes       Json?
   createdAt   DateTime @default(now())
+
+  favorites Favorite[]
+}
+
+model Topping {
+  id       Int     @id @default(autoincrement())
+  name     String
+  price    Int
+  active   Boolean @default(true)
+  // qaysi kategoriyaga tegishli (masalan faqat "Pizza")
+  category String  @default("Pizza")
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model PromoCode {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  // "percent" yoki "amount"
+  type      String   @default("percent")
+  value     Int
+  minTotal  Int      @default(0)
+  active    Boolean  @default(true)
+  usedCount Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 model Order {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  items     Json
-  total     Int
-  location  String?
-  status    String   @default("kutilmoqda")
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  items       Json
+  subtotal    Int      @default(0)
+  deliveryFee Int      @default(0)
+  discount    Int      @default(0)
+  promoCode   String?
+  total       Int
+  location    String?
+  // yangi | tayyorlanmoqda | yolda | yetkazildi | bekor
+  status      String   @default("yangi")
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
+}
+
+model Setting {
+  id               Int     @id @default(1)
+  workFrom         String  @default("09:00")
+  workTo           String  @default("23:00")
+  alwaysOpen       Boolean @default(false)
+  deliveryFee      Int     @default(15000)
+  freeDeliveryFrom Int     @default(150000)
+  minOrderTotal    Int     @default(30000)
 }

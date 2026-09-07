@@ -1,10 +1,33 @@
 import { formatPrice } from "../api.js";
 import { haptic } from "../telegram.js";
 
-export default function ProductCard({ product, onOpen, onAdd }) {
+export default function ProductCard({
+  product,
+  onOpen,
+  onAdd,
+  isFavorite,
+  onToggleFavorite,
+}) {
+  const hasSizes = Array.isArray(product.sizes) && product.sizes.length > 0;
+
   return (
     <div className="card" onClick={() => onOpen(product)}>
-      <img className="card__img" src={product.imageUrl} alt={product.name} />
+      <div className="card__imgwrap">
+        <img className="card__img" src={product.imageUrl} alt={product.name} />
+
+        {onToggleFavorite && (
+          <button
+            className={"fav-btn fav-btn--sm" + (isFavorite ? " fav-btn--on" : "")}
+            onClick={(e) => {
+              e.stopPropagation();
+              haptic();
+              onToggleFavorite(product);
+            }}
+          >
+            {isFavorite ? "❤️" : "🤍"}
+          </button>
+        )}
+      </div>
 
       <div className="card__body">
         <div className="card__name">{product.name}</div>
@@ -17,7 +40,7 @@ export default function ProductCard({ product, onOpen, onAdd }) {
               </div>
             ) : null}
             <div className="price__new">
-              {formatPrice(product.newPrice)} so'm
+              {hasSizes ? `${formatPrice(product.newPrice)} so'm dan` : `${formatPrice(product.newPrice)} so'm`}
             </div>
           </div>
 
@@ -26,7 +49,9 @@ export default function ProductCard({ product, onOpen, onAdd }) {
             onClick={(e) => {
               e.stopPropagation();
               haptic();
-              onAdd(product);
+              // O'lchami bor mahsulot uchun oynani ochamiz
+              if (hasSizes) onOpen(product);
+              else onAdd(product, { qty: 1 });
             }}
           >
             +

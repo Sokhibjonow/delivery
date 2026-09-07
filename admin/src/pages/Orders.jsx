@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, formatPrice, formatDate } from "../api.js";
+import { api, formatPrice, formatDate, STATUSES, statusInfo } from "../api.js";
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState("hammasi");
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -20,14 +21,12 @@ export default function Orders() {
 
   useEffect(() => {
     load();
-    // Real vaqtga yaqin yangilanish: har 10 soniyada
     const timer = setInterval(() => load(true), 10000);
     return () => clearInterval(timer);
   }, [load]);
 
-  const toggleStatus = async (order) => {
-    const next = order.status === "yetkazildi" ? "kutilmoqda" : "yetkazildi";
-    await api.setOrderStatus(order.id, next);
+  const changeStatus = async (order, status) => {
+    await api.setOrderStatus(order.id, status);
     load(true);
   };
 
@@ -37,8 +36,16 @@ export default function Orders() {
     load(true);
   };
 
-  const pending = orders.filter((o) => o.status !== "yetkazildi").length;
-  const revenue = orders.reduce((s, o) => s + o.total, 0);
+  const visible =
+    filter === "hammasi" ? orders : orders.filter((o) => o.status === filter);
+
+  const active = orders.filter(
+    (o) => o.status !== "yetkazildi" && o.status !== "bekor"
+  ).length;
+
+  const revenue = orders
+    .filter((o) => o.status !== "bekor")
+    .reduce((s, o) => s + o.total, 0);
 
   return (
     <>
@@ -50,11 +57,14 @@ export default function Orders() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span className="live">
             <span className="live__dot" />
             Har 10 soniyada yangilanadi
           </span>
+          <button className="btn btn--ghost" onClick={() => api.exportOrders()}>
+            ⬇ Excel'ga yuklash
+          </button>
           <button className="btn btn--ghost" onClick={() => load()}>
             ⟳ Yangilash
           </button>
@@ -69,8 +79,8 @@ export default function Orders() {
           <div className="stat__value">{orders.length}</div>
         </div>
         <div className="stat">
-          <div className="stat__label">Kutilmoqda</div>
-          <div className="stat__value">{pending}</div>
+          <div className="stat__label">Faol (yetkazilmagan)</div>
+          <div className="stat__value">{active}</div>
         </div>
         <div className="stat">
           <div className="stat__label">Umumiy summa</div>
@@ -78,16 +88,37 @@ export default function Orders() {
         </div>
       </div>
 
+      <div className="filters">
+        <button
+          className={"chip" + (filter === "hammasi" ? " chip--on" : "")}
+          onClick={() => setFilter("hammasi")}
+        >
+          Hammasi ({orders.length})
+        </button>
+        {STATUSES.map((s) => {
+          const count = orders.filter((o) => o.status === s.key).length;
+          return (
+            <button
+              key={s.key}
+              className={"chip" + (filter === s.key ? " chip--on" : "")}
+              onClick={() => setFilter(s.key)}
+            >
+              {s.label} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       <div className="panel">
         {loading ? (
           <div className="loader">
             <div className="spinner" />
           </div>
-        ) : orders.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="empty">
             <div className="empty__emoji">🧾</div>
-            <div className="empty__title">Hozircha buyurtmalar yo'q</div>
-            <div>Mini App orqali birinchi buyurtma kutilmoqda</div>
+            <div className="empty__title">Buyurtmalar yo'q</div>
+            <div>Bu bo'limda hozircha hech narsa yo'q</div>
           </div>
         ) : (
           <div className="table-wrap">
@@ -99,7 +130,7 @@ export default function Orders() {
                   <th>Telefon</th>
                   <th>Buyurtma tarkibi</th>
                   <th>Manzil</th>
-                  <th>Jami</th>
+                  <th>Hisob</th>
                   <th>Sana</th>
                   <th>Holati</th>
                   <th></th>
@@ -107,7 +138,7 @@ export default function Orders() {
               </thead>
 
               <tbody>
-                {orders.map((o) => (
+                {visible.map((o) => (
                   <tr key={o.id}>
                     <td className="cell-strong">#{o.id}</td>
 
@@ -119,33 +150,62 @@ export default function Orders() {
                       <ul className="items-list">
                         {o.items.map((i, idx) => (
                           <li key={idx}>
-                            {i.name} × {i.qty}
+                            {i.name}
+                            {i.size ? ` (${i.size})` : ""} × {i.qty}
+                            {i.toppings?.length > 0 && (
+                              <div className="items-list__tops">
+                                + {i.toppings.map((t) => t.name).join(", ")}
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>
                     </td>
 
-                    <td className="cell-muted" style={{ maxWidth: 200 }}>
+                    <td className="cell-muted" style={{ maxWidth: 180 }}>
                       {o.location || "—"}
                     </td>
 
-                    <td className="cell-price">
-                      {formatPrice(o.total)} so'm
+                    <td>
+                      <div className="money">
+                        <div className="money__row">
+                          <span>Mahsulot</span>
+                          <span>{formatPrice(o.subtotal)}</span>
+                        </div>
+                        {o.discount > 0 && (
+                          <div className="money__row money__row--green">
+                            <span>{o.promoCode || "Chegirma"}</span>
+                            <span>−{formatPrice(o.discount)}</span>
+                          </div>
+                        )}
+                        <div className="money__row">
+                          <span>Yetkazish</span>
+                          <span>
+                            {o.deliveryFee > 0
+                              ? formatPrice(o.deliveryFee)
+                              : "Bepul"}
+                          </span>
+                        </div>
+                        <div className="money__total">
+                          {formatPrice(o.total)} so'm
+                        </div>
+                      </div>
                     </td>
 
                     <td className="cell-muted">{formatDate(o.createdAt)}</td>
 
                     <td>
-                      <button
-                        className={
-                          "badge" +
-                          (o.status === "yetkazildi" ? " badge--done" : "")
-                        }
-                        onClick={() => toggleStatus(o)}
-                        title="Holatni o'zgartirish"
+                      <select
+                        className={"status-select " + statusInfo(o.status).cls}
+                        value={o.status}
+                        onChange={(e) => changeStatus(o, e.target.value)}
                       >
-                        {o.status}
-                      </button>
+                        {STATUSES.map((s) => (
+                          <option key={s.key} value={s.key}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
                     </td>
 
                     <td>
