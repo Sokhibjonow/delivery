@@ -1361,3 +1361,55 @@ img {
 .tracker__line--on {
   background: var(--accent);
 }
+
+/* ---------- Til almashtirgich ---------- */
+.onb__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  margin-bottom: 16px;
+}
+
+.lang-row__label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.lang-switch--sm {
+  background: var(--surface);
+}
+
+.lang-btn {
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: 0.15s;
+  white-space: nowrap;
+}
+
+.lang-btn--on {
+  background: var(--accent);
+  color: #fff;
+}

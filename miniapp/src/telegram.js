@@ -1,5 +1,7 @@
 // Telegram WebApp bilan ishlash uchun kichik yordamchi.
 
+export const APP_VERSION = "v7";
+
 export const tg = window.Telegram?.WebApp;
 
 const INIT_DATA_KEY = "pizza_tg_init_data";
@@ -141,4 +143,30 @@ export function closeApp() {
   } else {
     alert("Buyurtmangiz qabul qilindi! (Telegram ichida ilova yopiladi)");
   }
+}
+
+/** Diagnostika: nima uchun initData yo'qligini aniqlash uchun */
+export function debugInfo() {
+  let cached = 0;
+  try {
+    cached = (localStorage.getItem(INIT_DATA_KEY) || "").length;
+  } catch {
+    cached = -1;
+  }
+
+  const hash = window.location.hash || "";
+  const search = window.location.search || "";
+
+  return [
+    "ver=" + APP_VERSION,
+    "tg=" + (tg ? 1 : 0),
+    "tgver=" + (tg?.version || "-"),
+    "platform=" + (tg?.platform || "-"),
+    "initLen=" + (tg?.initData || "").length,
+    "unsafeUser=" + (tg?.initDataUnsafe?.user?.id ? 1 : 0),
+    "hashLen=" + hash.length,
+    "hasTgData=" + (hash.includes("tgWebAppData") ? 1 : 0),
+    "qs=" + (search.includes("tgWebApp") ? 1 : 0),
+    "cached=" + cached,
+  ].join(";");
 }

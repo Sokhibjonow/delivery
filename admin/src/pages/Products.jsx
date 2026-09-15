@@ -72,6 +72,7 @@ export default function Products() {
                 <tr>
                   <th>Rasm</th>
                   <th>Nomi</th>
+                  <th>Ruscha nomi</th>
                   <th>Ta'rifi</th>
                   <th>Kategoriya</th>
                   <th>O'lchamlar</th>
@@ -89,6 +90,8 @@ export default function Products() {
                     </td>
 
                     <td className="cell-strong">{p.name}</td>
+
+                    <td className="cell-muted">{p.nameRu || "—"}</td>
 
                     <td
                       className="cell-muted"

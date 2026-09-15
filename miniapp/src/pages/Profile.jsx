@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { formatPrice, formatDate, ORDER_STEPS } from "../api.js";
 import { haptic } from "../telegram.js";
+import { useLang, LANGS, MULTILANG, localized } from "../i18n.js";
 import ProductCard from "../components/ProductCard.jsx";
 
-function OrderTracker({ status }) {
+function OrderTracker({ status, t }) {
   if (status === "bekor") {
-    return <div className="tracker tracker--cancel">❌ Buyurtma bekor qilingan</div>;
+    return <div className="tracker tracker--cancel">{t("orderCancelled")}</div>;
   }
 
   const current = ORDER_STEPS.findIndex((s) => s.key === status);
@@ -20,7 +21,7 @@ function OrderTracker({ status }) {
             className={"tracker__step" + (done ? " tracker__step--on" : "")}
           >
             <div className="tracker__dot">{done ? step.icon : ""}</div>
-            <div className="tracker__label">{step.label}</div>
+            <div className="tracker__label">{t(step.tKey)}</div>
             {i < ORDER_STEPS.length - 1 && (
               <div
                 className={
@@ -46,24 +47,41 @@ export default function Profile({
   onOpen,
   onAdd,
   onToggleFavorite,
+  onChangeLang,
+  products = [],
 }) {
+  const { lang, t } = useLang();
   const [tab, setTab] = useState("orders");
 
   return (
     <div className="page">
       <div className="profile-top">
         <div className="profile-top__avatar">👤</div>
-        <div className="profile-top__name">{user.name}</div>
+        <div className="profile-top__name">
+          {user.name === "Mehmon" ? t("guest") : user.name}
+        </div>
         {user.phone ? (
           <div className="profile-top__id">{user.phone}</div>
         ) : null}
       </div>
 
-      {!user.verified && (
-        <div className="notice notice--warn">
-          👤 Siz mehmon rejimidasiz. Buyurtmalaringiz saqlanadi, lekin botdan
-          xabar kelishi uchun ilovani Telegram'dagi «🍕 Buyurtma berish»
-          tugmasi orqali oching.
+      {MULTILANG && (
+        <div className="lang-row">
+          <span className="lang-row__label">{t("language")}</span>
+          <div className="lang-switch">
+            {LANGS.map((l) => (
+              <button
+                key={l.code}
+                className={"lang-btn" + (lang === l.code ? " lang-btn--on" : "")}
+                onClick={() => {
+                  haptic();
+                  onChangeLang(l.code);
+                }}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -75,7 +93,7 @@ export default function Profile({
             setTab("orders");
           }}
         >
-          📜 Buyurtmalarim
+          {t("myOrders")}
         </button>
         <button
           className={"tabs__item" + (tab === "fav" ? " tabs__item--on" : "")}
@@ -84,7 +102,7 @@ export default function Profile({
             setTab("fav");
           }}
         >
-          ❤️ Sevimlilar {favorites.length > 0 ? `(${favorites.length})` : ""}
+          {t("favorites")} {favorites.length > 0 ? `(${favorites.length})` : ""}
         </button>
       </div>
 
@@ -92,16 +110,14 @@ export default function Profile({
         favorites.length === 0 ? (
           <div className="empty">
             <div className="empty__emoji">🤍</div>
-            <div className="empty__title">Sevimlilar bo'sh</div>
-            <div style={{ marginBottom: 20 }}>
-              Yoqqan pizzani ❤️ belgisi bilan saqlab qo'ying
-            </div>
+            <div className="empty__title">{t("favEmpty")}</div>
+            <div style={{ marginBottom: 20 }}>{t("favEmptyText")}</div>
             <button
               className="btn"
               style={{ maxWidth: 240, margin: "0 auto" }}
               onClick={() => goTo("catalog")}
             >
-              Katalogga o'tish
+              {t("goToCatalog")}
             </button>
           </div>
         ) : (
@@ -125,39 +141,41 @@ export default function Profile({
       ) : orders.length === 0 ? (
         <div className="empty">
           <div className="empty__emoji">🧾</div>
-          <div className="empty__title">Buyurtmalar yo'q</div>
-          <div style={{ marginBottom: 20 }}>
-            Birinchi buyurtmangizni hoziroq bering
-          </div>
+          <div className="empty__title">{t("noOrders")}</div>
+          <div style={{ marginBottom: 20 }}>{t("noOrdersText")}</div>
           <button
             className="btn"
             style={{ maxWidth: 240, margin: "0 auto" }}
             onClick={() => goTo("catalog")}
           >
-            Katalogga o'tish
+            {t("goToCatalog")}
           </button>
         </div>
       ) : (
         orders.map((o) => (
           <div className="order" key={o.id}>
             <div className="order__head">
-              <div className="order__id">Buyurtma #{o.id}</div>
+              <div className="order__id">{t("orderNo", o.id)}</div>
               <div className="order__date">{formatDate(o.createdAt)}</div>
             </div>
 
-            <OrderTracker status={o.status} />
+            <OrderTracker status={o.status} t={t} />
 
             <div className="order__items">
               {o.items
                 .map((i) => {
+                  const product = products.find((x) => x.id === i.id);
+                  const label = localized(product || i, lang);
                   const size = i.size ? ` (${i.size})` : "";
-                  return `${i.name}${size} × ${i.qty}`;
+                  return `${label}${size} × ${i.qty}`;
                 })
                 .join(", ")}
             </div>
 
             <div className="order__foot">
-              <div className="order__total">{formatPrice(o.total)} so'm</div>
+              <div className="order__total">
+                {formatPrice(o.total)} {t("sum")}
+              </div>
               <button
                 className="order__again"
                 onClick={() => {
@@ -165,7 +183,7 @@ export default function Profile({
                   onReorder(o);
                 }}
               >
-                Yana shundan buyurtma qilish
+                {t("orderAgain")}
               </button>
             </div>
           </div>

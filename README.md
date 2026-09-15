@@ -97,6 +97,14 @@ winget install Cloudflare.cloudflared
 
 ## Imkoniyatlar
 
+### Tillar
+- Hozircha **faqat o'zbekcha** (rus tili vaqtincha o'chirilgan)
+- Ruscha tarjimalar kodda to'liq saqlanib turibdi — qayta yoqish uchun 2 ta faylda
+  `MULTILANG` ni `true` qiling:
+  - `miniapp/src/i18n.js`
+  - `backend/src/i18n.js`
+- Yoqilganda: Profilda til almashtirgich, botda `/uz` va `/ru`, mahsulot nomlari ham tarjima bo'ladi
+
 ### Mini App (mijozlar uchun)
 - Onboarding (3 slayd, faqat bir marta)
 - Bosh sahifa: Stories, hero vidjet, ommabop pizzalar
@@ -104,7 +112,7 @@ winget install Cloudflare.cloudflared
 - Mahsulot oynasi: **o'lcham tanlash** (25/30/35 sm) va **qo'shimchalar**
 - Savatcha: ichimlik taklifi, **promokod**, yetkazib berish narxi, minimal summa
 - Telefon raqamni Telegram'dan bir tugma bilan olish
-- Profil: **buyurtma kuzatuvi** (4 bosqich) va sevimlilar
+- Profil: **buyurtma kuzatuvi** (4 bosqich), sevimlilar va til tanlash
 - Ish vaqtidan tashqarida buyurtma qabul qilinmaydi
 
 ### Admin Panel

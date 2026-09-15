@@ -3,7 +3,9 @@ import { formatPrice } from "../api.js";
 
 const EMPTY = {
   name: "",
+  nameRu: "",
   description: "",
+  descriptionRu: "",
   imageUrl: "",
   oldPrice: "",
   newPrice: "",
@@ -21,6 +23,8 @@ export default function ProductModal({ product, onSave, onClose }) {
   const [form, setForm] = useState({
     ...EMPTY,
     ...product,
+    nameRu: product.nameRu ?? "",
+    descriptionRu: product.descriptionRu ?? "",
     oldPrice: product.oldPrice ?? "",
     newPrice: product.newPrice ?? "",
   });
@@ -53,6 +57,8 @@ export default function ProductModal({ product, onSave, onClose }) {
     try {
       await onSave({
         ...form,
+        nameRu: form.nameRu?.trim() || null,
+        descriptionRu: form.descriptionRu?.trim() || null,
         oldPrice: form.oldPrice === "" ? null : Number(form.oldPrice),
         newPrice: Number(form.newPrice),
         sizes: sizes.length > 0 ? sizes : null,
@@ -87,17 +93,41 @@ export default function ProductModal({ product, onSave, onClose }) {
           />
         </div>
 
-        <div className="field">
-          <label>Nomi</label>
-          <input value={form.name} onChange={set("name")} placeholder="Margarita" />
+        <div className="field-row">
+          <div className="field">
+            <label>🇺🇿 Nomi (o'zbekcha)</label>
+            <input
+              value={form.name}
+              onChange={set("name")}
+              placeholder="Margarita"
+            />
+          </div>
+
+          <div className="field">
+            <label>🇷🇺 Nomi (ruscha)</label>
+            <input
+              value={form.nameRu}
+              onChange={set("nameRu")}
+              placeholder="Маргарита"
+            />
+          </div>
         </div>
 
         <div className="field">
-          <label>Ta'rifi</label>
+          <label>🇺🇿 Ta'rifi (o'zbekcha)</label>
           <textarea
             value={form.description}
             onChange={set("description")}
             placeholder="Pizza tarkibi va tavsifi"
+          />
+        </div>
+
+        <div className="field">
+          <label>🇷🇺 Ta'rifi (ruscha)</label>
+          <textarea
+            value={form.descriptionRu}
+            onChange={set("descriptionRu")}
+            placeholder="Состав и описание пиццы"
           />
         </div>
 

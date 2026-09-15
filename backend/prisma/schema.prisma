@@ -12,6 +12,7 @@ model User {
   telegramId String   @unique
   name       String
   phone      String?
+  lang       String   @default("uz")
   createdAt  DateTime @default(now())
 
   orders    Order[]
@@ -22,7 +23,9 @@ model Product {
   id          Int      @id @default(autoincrement())
   imageUrl    String
   name        String
+  nameRu      String?
   description String
+  descriptionRu String?
   oldPrice    Int?
   newPrice    Int
   category    String
@@ -36,6 +39,7 @@ model Product {
 model Topping {
   id       Int     @id @default(autoincrement())
   name     String
+  nameRu   String?
   price    Int
   active   Boolean @default(true)
   // qaysi kategoriyaga tegishli (masalan faqat "Pizza")

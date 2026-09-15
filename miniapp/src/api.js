@@ -1,4 +1,4 @@
-import { getInitData, getGuestId } from "./telegram.js";
+import { getInitData, getGuestId, debugInfo } from "./telegram.js";
 
 // Vite dev-server /api so'rovlarini backendga (localhost:4000) uzatadi.
 const BASE = "/api";
@@ -11,6 +11,7 @@ async function request(path, options = {}) {
       // Mijozni serverda ishonchli aniqlash uchun
       "x-init-data": getInitData(),
       "x-guest-id": getGuestId(),
+      "x-tg-debug": debugInfo(),
       ...(options.headers || {}),
     },
   });
@@ -32,7 +33,11 @@ export const api = {
 
   getToppings: () => request("/toppings"),
 
-  auth: () => request("/users/auth", { method: "POST", body: "{}" }),
+  auth: (lang) =>
+    request("/users/auth", { method: "POST", body: JSON.stringify({ lang }) }),
+
+  setLang: (lang) =>
+    request("/users/lang", { method: "POST", body: JSON.stringify({ lang }) }),
 
   getMyOrders: () => request("/orders/my"),
 
@@ -76,8 +81,8 @@ export function cartKey(productId, size, toppingIds) {
 }
 
 export const ORDER_STEPS = [
-  { key: "yangi", label: "Qabul qilindi", icon: "📝" },
-  { key: "tayyorlanmoqda", label: "Tayyorlanmoqda", icon: "👨‍🍳" },
-  { key: "yolda", label: "Yo'lda", icon: "🛵" },
-  { key: "yetkazildi", label: "Yetkazildi", icon: "✅" },
+  { key: "yangi", tKey: "stepNew", icon: "📝" },
+  { key: "tayyorlanmoqda", tKey: "stepCooking", icon: "👨‍🍳" },
+  { key: "yolda", tKey: "stepRoad", icon: "🛵" },
+  { key: "yetkazildi", tKey: "stepDone", icon: "✅" },
 ];

@@ -11,6 +11,9 @@ const PIZZA_SIZES = [
 const products = [
   {
     name: 'Margarita',
+    nameRu: 'Маргарита',
+    descriptionRu:
+      'Классическая итальянская пицца. Тонкое тесто, ароматный томатный соус и тянущаяся моцарелла.',
     description:
       'Klassik italyan pizzasi. Yupqa xamir, mazali tomat sousi va cho’zilib turadigan mozzarella pishlog’i.',
     imageUrl:
@@ -22,6 +25,9 @@ const products = [
   },
   {
     name: 'Peperoni',
+    nameRu: 'Пепперони',
+    descriptionRu:
+      'Острая колбаса пепперони, двойная моцарелла и фирменный томатный соус. Самая популярная пицца.',
     description:
       'Achchiqroq peperoni kolbasasi, qo’sh mozzarella va maxsus tomat sousi bilan tayyorlangan eng ommabop pizza.',
     imageUrl:
@@ -33,6 +39,9 @@ const products = [
   },
   {
     name: 'Qazi pizza',
+    nameRu: 'Пицца Кази',
+    descriptionRu:
+      'Национальный вкус! Натуральная конская казы, красный лук, болгарский перец и моцарелла.',
     description:
       'Milliy ta’m! Tabiiy ot qazisi, qizil piyoz, bulg’or qalampiri va mozzarella pishlog’i.',
     imageUrl:
@@ -44,6 +53,9 @@ const products = [
   },
   {
     name: 'Pishloqli',
+    nameRu: 'Четыре сыра',
+    descriptionRu:
+      'Сочетание четырёх сыров: моцарелла, чеддер, пармезан и творожный сыр. Для любителей сыра.',
     description:
       'To’rt xil pishloq uyg’unligi: mozzarella, chedder, parmezan va suzma pishloq. Pishloq shinavandalari uchun.',
     imageUrl:
@@ -55,6 +67,9 @@ const products = [
   },
   {
     name: 'Coca-Cola 0.5L',
+    nameRu: 'Coca-Cola 0.5л',
+    descriptionRu:
+      'Ледяная Coca-Cola. Лучший спутник для пиццы.',
     description: 'Muzdek Coca-Cola. Pizza uchun eng yaxshi hamroh.',
     imageUrl:
       'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=800&q=80',
@@ -66,12 +81,12 @@ const products = [
 ];
 
 const toppings = [
-  { name: 'Qo’shimcha mozzarella', price: 8000 },
-  { name: 'Qo’ziqorin', price: 6000 },
-  { name: 'Peperoni kolbasa', price: 10000 },
-  { name: 'Zaytun', price: 5000 },
-  { name: 'Bulg’or qalampiri', price: 4000 },
-  { name: 'Achchiq jalapeño', price: 4000 },
+  { name: 'Qo’shimcha mozzarella', nameRu: 'Дополнительная моцарелла', price: 8000 },
+  { name: 'Qo’ziqorin', nameRu: 'Грибы', price: 6000 },
+  { name: 'Peperoni kolbasa', nameRu: 'Колбаса пепперони', price: 10000 },
+  { name: 'Zaytun', nameRu: 'Оливки', price: 5000 },
+  { name: 'Bulg’or qalampiri', nameRu: 'Болгарский перец', price: 4000 },
+  { name: 'Achchiq jalapeño', nameRu: 'Острый халапеньо', price: 4000 },
 ];
 
 const promos = [
@@ -100,7 +115,10 @@ async function main() {
   for (const t of toppings) {
     const existing = await prisma.topping.findFirst({ where: { name: t.name } });
 
-    if (!existing) {
+    if (existing) {
+      await prisma.topping.update({ where: { id: existing.id }, data: t });
+      console.log(`  yangilandi  : ${t.name}`);
+    } else {
       await prisma.topping.create({ data: t });
       console.log(`  qo'shimcha  : ${t.name}`);
     }

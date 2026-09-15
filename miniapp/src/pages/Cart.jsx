@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, formatPrice } from "../api.js";
 import { haptic } from "../telegram.js";
+import { useLang, localized } from "../i18n.js";
 
 export default function Cart({
   cart,
@@ -15,6 +16,8 @@ export default function Cart({
   goTo,
   onRequestPhone,
 }) {
+  const { lang, t } = useLang();
+
   const [name, setName] = useState(user.name || "");
   const [phone, setPhone] = useState(user.phone || "");
   const [location, setLocation] = useState("");
@@ -25,12 +28,15 @@ export default function Cart({
   const [promoError, setPromoError] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
 
-  // Bot orqali raqam kelgan bo'lsa maydonni to'ldiramiz
+  // Telegram'dan ism/raqam kelsa maydonlarni to'ldiramiz
+  useEffect(() => {
+    if (user.name && !name) setName(user.name);
+  }, [user.name]);
+
   useEffect(() => {
     if (user.phone && !phone) setPhone(user.phone);
   }, [user.phone]);
 
-  // Qo'shimcha taklif uchun ichimlik
   const drink = useMemo(
     () => products.find((p) => p.category === "Ichimliklar"),
     [products]
@@ -60,12 +66,13 @@ export default function Cart({
     api
       .checkPromo(promo.code, subtotal)
       .then((r) => {
-        if (!cancelled) setPromo({ code: r.code, discount: r.discount, label: r.label });
+        if (!cancelled)
+          setPromo({ code: r.code, discount: r.discount, label: r.label });
       })
       .catch(() => {
         if (!cancelled) {
           setPromo(null);
-          setPromoError("Promokod bu summaga amal qilmaydi");
+          setPromoError(t("promoExpired"));
         }
       });
 
@@ -97,6 +104,7 @@ export default function Cart({
   const toggleDrink = () => {
     haptic();
     if (!drink) return;
+
     if (drinkInCart) {
       const item = cart.find((i) => i.id === drink.id);
       onRemove(item.key);
@@ -113,7 +121,7 @@ export default function Cart({
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setLocation(
-          `Geolokatsiya: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
+          `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
         );
         setGeoLoading(false);
       },
@@ -137,23 +145,21 @@ export default function Cart({
       <div className="page">
         <header className="header">
           <div>
-            <div className="header__hi">Buyurtmangiz</div>
-            <div className="header__name">Savatcha</div>
+            <div className="header__hi">{t("yourOrder")}</div>
+            <div className="header__name">{t("cart")}</div>
           </div>
         </header>
 
         <div className="empty">
           <div className="empty__emoji">🛒</div>
-          <div className="empty__title">Savatcha bo'sh</div>
-          <div style={{ marginBottom: 20 }}>
-            Katalogdan o'zingizga yoqqan pizzani tanlang
-          </div>
+          <div className="empty__title">{t("cartEmpty")}</div>
+          <div style={{ marginBottom: 20 }}>{t("cartEmptyText")}</div>
           <button
             className="btn"
             style={{ maxWidth: 240, margin: "0 auto" }}
             onClick={() => goTo("catalog")}
           >
-            Katalogga o'tish
+            {t("goToCatalog")}
           </button>
         </div>
       </div>
@@ -164,34 +170,38 @@ export default function Cart({
     <div className="page">
       <header className="header">
         <div>
-          <div className="header__hi">Buyurtmangiz</div>
-          <div className="header__name">Savatcha</div>
+          <div className="header__hi">{t("yourOrder")}</div>
+          <div className="header__name">{t("cart")}</div>
         </div>
       </header>
 
       {!settings.isOpenNow && (
         <div className="notice notice--warn">
-          🕒 Hozir yopiqmiz. Ish vaqti: {settings.workFrom} — {settings.workTo}
+          {t("closedNotice", settings.workFrom, settings.workTo)}
         </div>
       )}
 
       {cart.map((item) => (
         <div className="cart-row" key={item.key}>
-          <img className="cart-row__img" src={item.imageUrl} alt={item.name} />
+          <img className="cart-row__img" src={item.imageUrl} alt={localized(item, lang)} />
 
           <div className="cart-row__main">
             <div className="cart-row__name">
-              {item.name}
-              {item.size ? <span className="cart-row__size"> · {item.size}</span> : null}
+              {localized(item, lang)}
+              {item.size ? (
+                <span className="cart-row__size"> · {item.size}</span>
+              ) : null}
             </div>
 
             {item.toppings?.length > 0 && (
               <div className="cart-row__tops">
-                + {item.toppings.map((t) => t.name).join(", ")}
+                + {item.toppings.map((x) => localized(x, lang)).join(", ")}
               </div>
             )}
 
-            <div className="cart-row__price">{formatPrice(item.price)} so'm</div>
+            <div className="cart-row__price">
+              {formatPrice(item.price)} {t("sum")}
+            </div>
           </div>
 
           <div className="stepper">
@@ -218,22 +228,21 @@ export default function Cart({
 
       {drink && (
         <div className="upsell">
-          <img className="upsell__img" src={drink.imageUrl} alt={drink.name} />
+          <img className="upsell__img" src={drink.imageUrl} alt={localized(drink, lang)} />
           <div className="upsell__text">
-            Bunga qo'shimcha ravishda <b>{drink.name}</b> ni atigi{" "}
-            <b>{formatPrice(drink.newPrice)} so'mga</b> qo'shasizmi?
+            {t("upsell", localized(drink, lang), formatPrice(drink.newPrice))}
           </div>
           <button
             className={"switch" + (drinkInCart ? " switch--on" : "")}
             onClick={toggleDrink}
-            aria-label="Ichimlik qo'shish"
+            aria-label={t("toppings")}
           />
         </div>
       )}
 
       {/* ---------- Promokod ---------- */}
       <div className="section__title" style={{ margin: "22px 0 12px" }}>
-        Promokod
+        {t("promoCode")}
       </div>
 
       {promo ? (
@@ -248,7 +257,7 @@ export default function Cart({
               setPromoError("");
             }}
           >
-            Olib tashlash
+            {t("promoRemove")}
           </button>
         </div>
       ) : (
@@ -257,14 +266,14 @@ export default function Cart({
             <input
               value={promoInput}
               onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
-              placeholder="Kodni kiriting"
+              placeholder={t("promoPlaceholder")}
             />
             <button
               className="btn btn--ghost"
               onClick={applyPromo}
               disabled={promoLoading || !promoInput.trim()}
             >
-              {promoLoading ? "..." : "Qo'llash"}
+              {promoLoading ? "..." : t("promoApply")}
             </button>
           </div>
           {promoError && <div className="promo-error">{promoError}</div>}
@@ -273,20 +282,20 @@ export default function Cart({
 
       {/* ---------- Ma'lumotlar ---------- */}
       <div className="section__title" style={{ margin: "22px 0 12px" }}>
-        Yetkazib berish ma'lumotlari
+        {t("deliveryInfo")}
       </div>
 
       <div className="field">
-        <label>Ismingiz</label>
+        <label>{t("yourName")}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ismingizni kiriting"
+          placeholder={t("namePlaceholder")}
         />
       </div>
 
       <div className="field">
-        <label>Telefon raqamingiz</label>
+        <label>{t("yourPhone")}</label>
         <input
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
@@ -301,16 +310,16 @@ export default function Cart({
             onRequestPhone();
           }}
         >
-          📞 Telegram raqamimni ulash
+          {t("connectPhone")}
         </button>
       </div>
 
       <div className="field">
-        <label>Manzil / lokatsiya</label>
+        <label>{t("addressLabel")}</label>
         <textarea
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="Ko'cha, uy, xonadon raqami"
+          placeholder={t("addressPlaceholder")}
         />
         <button
           className="btn btn--ghost"
@@ -318,47 +327,56 @@ export default function Cart({
           onClick={detectLocation}
           disabled={geoLoading}
         >
-          {geoLoading ? "Aniqlanmoqda..." : "📍 Joylashuvni aniqlash"}
+          {geoLoading ? t("detecting") : t("detectLocation")}
         </button>
       </div>
 
       {/* ---------- Hisob ---------- */}
       <div className="summary">
         <div className="summary__row">
-          <span>Mahsulotlar</span>
-          <span>{formatPrice(subtotal)} so'm</span>
+          <span>{t("productsSum")}</span>
+          <span>
+            {formatPrice(subtotal)} {t("sum")}
+          </span>
         </div>
 
         {discount > 0 && (
           <div className="summary__row summary__row--green">
-            <span>Chegirma ({promo.code})</span>
-            <span>−{formatPrice(discount)} so'm</span>
+            <span>
+              {t("discount")} ({promo.code})
+            </span>
+            <span>
+              −{formatPrice(discount)} {t("sum")}
+            </span>
           </div>
         )}
 
         <div className="summary__row">
-          <span>Yetkazib berish</span>
+          <span>{t("deliveryFee")}</span>
           <span>
-            {deliveryFee === 0 ? "Bepul" : `${formatPrice(deliveryFee)} so'm`}
+            {deliveryFee === 0
+              ? t("free")
+              : `${formatPrice(deliveryFee)} ${t("sum")}`}
           </span>
         </div>
 
         {deliveryFee > 0 && (
           <div className="summary__hint">
-            Yana {formatPrice(settings.freeDeliveryFrom - afterDiscount)} so'mlik
-            buyurtma qo'shsangiz — yetkazish bepul 🎉
+            {t("freeHint", formatPrice(settings.freeDeliveryFrom - afterDiscount))}
           </div>
         )}
       </div>
 
       <div className="total">
-        <span>Jami</span>
-        <span>{formatPrice(total)} so'm</span>
+        <span>{t("total")}</span>
+        <span>
+          {formatPrice(total)} {t("sum")}
+        </span>
       </div>
 
       {belowMin && (
         <div className="notice notice--warn">
-          Minimal buyurtma summasi {formatPrice(settings.minOrderTotal)} so'm
+          {t("minOrder", formatPrice(settings.minOrderTotal))}
         </div>
       )}
 
@@ -369,7 +387,7 @@ export default function Cart({
           onSubmit({ name, phone, location, promoCode: promo?.code || null })
         }
       >
-        {submitting ? "Yuborilmoqda..." : "Buyurtmani tasdiqlash"}
+        {submitting ? t("sending") : t("confirmOrder")}
       </button>
 
       <div style={{ height: 20 }} />

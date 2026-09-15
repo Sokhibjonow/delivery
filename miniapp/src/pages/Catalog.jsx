@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard.jsx";
 import { haptic } from "../telegram.js";
+import { useLang, translateCategory, localized } from "../i18n.js";
 
 export default function Catalog({
   products,
@@ -10,6 +11,7 @@ export default function Catalog({
   favorites,
   onToggleFavorite,
 }) {
+  const { lang, t } = useLang();
   const [active, setActive] = useState("Hammasi");
   const [query, setQuery] = useState("");
 
@@ -18,10 +20,12 @@ export default function Catalog({
 
     return products.filter((p) => {
       const byCategory = active === "Hammasi" || p.category === active;
-      const bySearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q);
+      const haystack = [p.name, p.nameRu, p.description, p.descriptionRu]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const bySearch = !q || haystack.includes(q);
 
       return byCategory && bySearch;
     });
@@ -31,8 +35,8 @@ export default function Catalog({
     <div className="page">
       <header className="header">
         <div>
-          <div className="header__hi">Menyu</div>
-          <div className="header__name">Katalog</div>
+          <div className="header__hi">{t("menuLabel")}</div>
+          <div className="header__name">{t("catalog")}</div>
         </div>
       </header>
 
@@ -41,7 +45,7 @@ export default function Catalog({
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Pizza qidirish..."
+          placeholder={t("searchPlaceholder")}
         />
         {query && (
           <button className="search__clear" onClick={() => setQuery("")}>
@@ -60,7 +64,7 @@ export default function Catalog({
               setActive(c);
             }}
           >
-            {c}
+            {translateCategory(c, lang)}
           </button>
         ))}
       </div>
@@ -68,8 +72,8 @@ export default function Catalog({
       {visible.length === 0 ? (
         <div className="empty">
           <div className="empty__emoji">🍽️</div>
-          <div className="empty__title">Hech narsa topilmadi</div>
-          <div>Boshqa nom yoki kategoriyani sinab ko'ring</div>
+          <div className="empty__title">{t("nothingFound")}</div>
+          <div>{t("tryAnother")}</div>
         </div>
       ) : (
         <div className="grid">

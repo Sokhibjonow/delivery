@@ -1,47 +1,19 @@
 import { useState } from "react";
 import { haptic } from "../telegram.js";
-
-const STORIES = [
-  {
-    id: 1,
-    emoji: "🔥",
-    label: "Chegirma",
-    title: "Bugun -30%",
-    text: "Barcha klassik pizzalarga bugun kechgacha 30% chegirma amal qiladi.",
-  },
-  {
-    id: 2,
-    emoji: "🆕",
-    label: "Yangi",
-    title: "Qazi pizza",
-    text: "Milliy ta'mdagi yangi pizzamizni birinchilardan bo'lib tatib ko'ring.",
-  },
-  {
-    id: 3,
-    emoji: "🚀",
-    label: "Tezkor",
-    title: "30 daqiqa",
-    text: "Buyurtmangizni 30 daqiqa ichida issiqligicha yetkazib beramiz.",
-  },
-  {
-    id: 4,
-    emoji: "🎁",
-    label: "Sovg'a",
-    title: "Bepul ichimlik",
-    text: "100 000 so'mdan yuqori buyurtmaga Coca-Cola bepul.",
-  },
-  {
-    id: 5,
-    emoji: "⭐",
-    label: "Top",
-    title: "Eng ko'p tanlangan",
-    text: "Peperoni — mijozlarimiz eng ko'p buyurtma qiladigan pizza.",
-  },
-];
+import { useLang } from "../i18n.js";
 
 export default function Stories() {
+  const { t } = useLang();
   const [active, setActive] = useState(null);
   const [seen, setSeen] = useState([]);
+
+  const stories = [
+    { id: 1, emoji: "🔥", label: t("st1Label"), title: t("st1Title"), text: t("st1Text") },
+    { id: 2, emoji: "🆕", label: t("st2Label"), title: t("st2Title"), text: t("st2Text") },
+    { id: 3, emoji: "🚀", label: t("st3Label"), title: t("st3Title"), text: t("st3Text") },
+    { id: 4, emoji: "🎁", label: t("st4Label"), title: t("st4Title"), text: t("st4Text") },
+    { id: 5, emoji: "⭐", label: t("st5Label"), title: t("st5Title"), text: t("st5Text") },
+  ];
 
   const open = (story) => {
     haptic();
@@ -52,7 +24,7 @@ export default function Stories() {
   return (
     <>
       <div className="stories">
-        {STORIES.map((s) => (
+        {stories.map((s) => (
           <button key={s.id} className="story" onClick={() => open(s)}>
             <div
               className={

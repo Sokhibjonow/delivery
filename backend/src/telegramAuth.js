@@ -20,6 +20,10 @@ export function verifyInitData(initData, botToken) {
 
   params.delete('hash');
 
+  // Telegram'ning yangi versiyalari "signature" maydonini ham yuboradi,
+  // lekin u HMAC hisobiga KIRMAYDI (alohida Ed25519 imzosi).
+  params.delete('signature');
+
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([k, v]) => `${k}=${v}`)
@@ -35,7 +39,13 @@ export function verifyInitData(initData, botToken) {
     .update(dataCheckString)
     .digest('hex');
 
-  if (calculated !== hash) return null;
+  if (calculated !== hash) {
+    console.warn(
+      '[auth] initData IMZOSI MOS KELMADI. Maydonlar:',
+      [...params.keys()].join(', ')
+    );
+    return null;
+  }
 
   // initData localStorage'da saqlanadi, shuning uchun 30 kunlik muddat beramiz
   const authDate = Number(params.get('auth_date'));
@@ -58,6 +68,12 @@ export function verifyInitData(initData, botToken) {
  */
 export function identify(req, _res, next) {
   const initData = req.get('x-init-data') || '';
+
+  // Diagnostika: initData kelmasa nima uchun kelmaganini yozib qo'yamiz
+  if (!initData && req.path.endsWith('/auth')) {
+    console.log('[auth] initData YO\'Q →', req.get('x-tg-debug') || 'debug yo\'q');
+  }
+
   const tgUser = verifyInitData(initData, process.env.BOT_TOKEN);
 
   if (tgUser?.id) {
@@ -65,9 +81,18 @@ export function identify(req, _res, next) {
       telegramId: String(tgUser.id),
       name:
         [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') ||
+        tgUser.username ||
         'Mehmon',
+      languageCode: tgUser.language_code || '',
       verified: true,
     };
+
+    if (req.path.endsWith('/auth')) {
+      console.log(
+        `[auth] ✓ tasdiqlandi: ${req.customer.name} (${req.customer.telegramId})`
+      );
+    }
+
     return next();
   }
 

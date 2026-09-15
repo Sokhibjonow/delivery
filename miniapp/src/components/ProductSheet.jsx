@@ -1,43 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatPrice } from "../api.js";
 import { haptic } from "../telegram.js";
-
-// Har bir mahsulot tarkibi (bullet-point'lar uchun)
-const INGREDIENTS = {
-  Margarita: [
-    "Yupqa italyan xamiri",
-    "Maxsus tomat sousi",
-    "Mozzarella pishlog'i",
-    "Yangi rayhon barglari",
-    "Zaytun moyi",
-  ],
-  Peperoni: [
-    "Yupqa italyan xamiri",
-    "Achchiqroq peperoni kolbasasi",
-    "Qo'sh mozzarella pishlog'i",
-    "Tomat sousi va ziravorlar",
-  ],
-  "Qazi pizza": [
-    "Tabiiy ot qazisi",
-    "Qizil piyoz",
-    "Bulg'or qalampiri",
-    "Mozzarella pishlog'i",
-    "Tomat sousi",
-  ],
-  Pishloqli: [
-    "Mozzarella pishlog'i",
-    "Chedder pishlog'i",
-    "Parmezan pishlog'i",
-    "Suzma pishloq",
-    "Qaymoqli sous",
-  ],
-};
-
-const DEFAULT_BULLETS = [
-  "Yangi va sifatli mahsulotlar",
-  "Buyurtmadan keyin tayyorlanadi",
-  "30 daqiqada yetkazib beriladi",
-];
+import { useLang, INGREDIENTS, localized } from "../i18n.js";
 
 export default function ProductSheet({
   product,
@@ -47,6 +11,8 @@ export default function ProductSheet({
   isFavorite,
   onToggleFavorite,
 }) {
+  const { lang, t } = useLang();
+
   const [qty, setQty] = useState(1);
   const [sizeIndex, setSizeIndex] = useState(0);
   const [selected, setSelected] = useState([]);
@@ -72,13 +38,21 @@ export default function ProductSheet({
 
   if (!product) return null;
 
-  const bullets = INGREDIENTS[product.name] || DEFAULT_BULLETS;
+  const title = localized(product, lang);
+  const desc = localized(product, lang, "description");
+
+  const bullets = INGREDIENTS[lang]?.[product.name] ||
+    INGREDIENTS.uz[product.name] || [
+      t("defBullet1"),
+      t("defBullet2"),
+      t("defBullet3"),
+    ];
 
   const size = sizes[sizeIndex] || null;
   const sizeDelta = size ? Number(size.delta) || 0 : 0;
 
-  const chosenToppings = toppings.filter((t) => selected.includes(t.id));
-  const toppingsSum = chosenToppings.reduce((s, t) => s + t.price, 0);
+  const chosenToppings = toppings.filter((x) => selected.includes(x.id));
+  const toppingsSum = chosenToppings.reduce((s, x) => s + x.price, 0);
 
   const unitPrice = product.newPrice + sizeDelta + toppingsSum;
   const total = unitPrice * qty;
@@ -100,7 +74,7 @@ export default function ProductSheet({
             <img
               className="sheet__img"
               src={product.imageUrl}
-              alt={product.name}
+              alt={title}
             />
             <button
               className={"fav-btn" + (isFavorite ? " fav-btn--on" : "")}
@@ -113,19 +87,19 @@ export default function ProductSheet({
             </button>
           </div>
 
-          <h2 className="sheet__title">{product.name}</h2>
+          <h2 className="sheet__title">{title}</h2>
 
           {product.oldPrice ? (
             <div className="price__old" style={{ fontSize: 13 }}>
-              {formatPrice(product.oldPrice)} so'm
+              {formatPrice(product.oldPrice)} {t("sum")}
             </div>
           ) : null}
 
-          <p className="sheet__desc">{product.description}</p>
+          <p className="sheet__desc">{desc}</p>
 
           {sizes.length > 0 && (
             <>
-              <div className="sheet__sub">O'lchamni tanlang</div>
+              <div className="sheet__sub">{t("chooseSize")}</div>
               <div className="segmented">
                 {sizes.map((s, i) => (
                   <button
@@ -150,22 +124,22 @@ export default function ProductSheet({
 
           {toppings.length > 0 && (
             <>
-              <div className="sheet__sub">Qo'shimchalar</div>
+              <div className="sheet__sub">{t("toppings")}</div>
               <div className="toppings">
-                {toppings.map((t) => {
-                  const on = selected.includes(t.id);
+                {toppings.map((x) => {
+                  const on = selected.includes(x.id);
                   return (
                     <button
-                      key={t.id}
+                      key={x.id}
                       className={"topping" + (on ? " topping--on" : "")}
-                      onClick={() => toggleTopping(t.id)}
+                      onClick={() => toggleTopping(x.id)}
                     >
                       <span className={"tick" + (on ? " tick--on" : "")}>
                         {on ? "✓" : ""}
                       </span>
-                      <span className="topping__name">{t.name}</span>
+                      <span className="topping__name">{localized(x, lang)}</span>
                       <span className="topping__price">
-                        +{formatPrice(t.price)}
+                        +{formatPrice(x.price)}
                       </span>
                     </button>
                   );
@@ -174,7 +148,7 @@ export default function ProductSheet({
             </>
           )}
 
-          <div className="sheet__sub">Tarkibi</div>
+          <div className="sheet__sub">{t("ingredients")}</div>
           <ul className="bullets">
             {bullets.map((b) => (
               <li key={b}>{b}</li>
@@ -218,7 +192,7 @@ export default function ProductSheet({
               onClose();
             }}
           >
-            Savatchaga qo'shish — {formatPrice(total)} so'm
+            {t("addToCart")} — {formatPrice(total)} {t("sum")}
           </button>
         </div>
       </div>

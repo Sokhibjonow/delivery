@@ -42,7 +42,7 @@ productsRouter.get('/:id', async (req, res) => {
 
 /** Yangi mahsulot (Admin) */
 productsRouter.post('/', requireAdmin, async (req, res) => {
-  const { name, description, imageUrl, oldPrice, newPrice, category } = req.body;
+  const { name, nameRu, description, descriptionRu, imageUrl, oldPrice, newPrice, category, sizes } = req.body;
 
   if (!name || !newPrice || !category) {
     return res
@@ -53,11 +53,14 @@ productsRouter.post('/', requireAdmin, async (req, res) => {
   const product = await prisma.product.create({
     data: {
       name: String(name),
+      nameRu: nameRu ? String(nameRu) : null,
       description: String(description || ''),
+      descriptionRu: descriptionRu ? String(descriptionRu) : null,
       imageUrl: String(imageUrl || ''),
       oldPrice: oldPrice ? Number(oldPrice) : null,
       newPrice: Number(newPrice),
       category: String(category),
+      sizes: Array.isArray(sizes) && sizes.length > 0 ? sizes : null,
     },
   });
 
@@ -66,18 +69,21 @@ productsRouter.post('/', requireAdmin, async (req, res) => {
 
 /** Mahsulotni tahrirlash (Admin) */
 productsRouter.put('/:id', requireAdmin, async (req, res) => {
-  const { name, description, imageUrl, oldPrice, newPrice, category } = req.body;
+  const { name, nameRu, description, descriptionRu, imageUrl, oldPrice, newPrice, category, sizes } = req.body;
 
   try {
     const product = await prisma.product.update({
       where: { id: Number(req.params.id) },
       data: {
         name: String(name),
+        nameRu: nameRu ? String(nameRu) : null,
         description: String(description || ''),
+        descriptionRu: descriptionRu ? String(descriptionRu) : null,
         imageUrl: String(imageUrl || ''),
         oldPrice: oldPrice ? Number(oldPrice) : null,
         newPrice: Number(newPrice),
         category: String(category),
+        sizes: Array.isArray(sizes) && sizes.length > 0 ? sizes : null,
       },
     });
 

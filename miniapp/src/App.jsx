@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, cartKey } from "./api.js";
 import {
   initTelegram,
@@ -7,6 +7,14 @@ import {
   closeApp,
   requestPhone,
 } from "./telegram.js";
+import {
+  LangContext,
+  createT,
+  detectLang,
+  saveLang,
+  localized,
+  MULTILANG,
+} from "./i18n.js";
 
 import Onboarding from "./pages/Onboarding.jsx";
 import Home from "./pages/Home.jsx";
@@ -31,19 +39,22 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function App() {
+  const [lang, setLangState] = useState(detectLang);
+  const t = useMemo(() => createT(lang), [lang]);
+
   const [onboarded, setOnboarded] = useState(
     () => localStorage.getItem(ONBOARDING_KEY) === "1"
   );
 
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [user, setUser] = useState({ telegramId: "", name: "Mehmon" });
+  const [user, setUser] = useState({ telegramId: "", name: "" });
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState(["Hammasi"]);
   const [toppings, setToppings] = useState([]);
 
-  const [favorites, setFavorites] = useState([]); // product obyektlari
+  const [favorites, setFavorites] = useState([]);
 
   const [cart, setCart] = useState(() => {
     try {
@@ -75,7 +86,7 @@ export default function App() {
           api.getProducts(),
           api.getCategories(),
           api.getToppings().catch(() => []),
-          api.auth().catch(() => null),
+          api.auth(localStorage.getItem("pizza_lang") || undefined).catch(() => null),
         ]);
 
         setSettings({ ...DEFAULT_SETTINGS, ...cfg });
@@ -89,6 +100,12 @@ export default function App() {
           phone: dbUser?.phone || "",
           verified: Boolean(dbUser?.verified),
         });
+
+        // Bazadagi til bilan moslashtiramiz (ko'p tillilik yoqilgan bo'lsa)
+        if (MULTILANG && dbUser?.lang && dbUser.lang !== lang) {
+          setLangState(dbUser.lang);
+          saveLang(dbUser.lang);
+        }
 
         const favs = await api.getFavorites().catch(() => []);
         setFavorites(favs);
@@ -107,7 +124,6 @@ export default function App() {
 
   /* ---------- Buyurtmalar tarixi ---------- */
   const loadOrders = useCallback(async () => {
-    if (!user.telegramId) return;
     setOrdersLoading(true);
     try {
       setOrders(await api.getMyOrders());
@@ -116,7 +132,7 @@ export default function App() {
     } finally {
       setOrdersLoading(false);
     }
-  }, [user.telegramId]);
+  }, []);
 
   useEffect(() => {
     if (tab === "profile") loadOrders();
@@ -128,19 +144,29 @@ export default function App() {
     setTimeout(() => setToast(""), 2400);
   }
 
+  function changeLang(next) {
+    if (!MULTILANG) return;
+
+    setLangState(next);
+    saveLang(next);
+    api.setLang(next).catch(() => {});
+  }
+
   function addToCart(product, opts = {}) {
     const { qty = 1, size = null, toppings: tops = [], unitPrice } = opts;
 
     const price = unitPrice ?? product.newPrice;
-    const key = cartKey(product.id, size, tops.map((t) => t.id));
+    const key = cartKey(
+      product.id,
+      size,
+      tops.map((x) => x.id)
+    );
 
     setCart((prev) => {
       const found = prev.find((i) => i.key === key);
 
       if (found) {
-        return prev.map((i) =>
-          i.key === key ? { ...i, qty: i.qty + qty } : i
-        );
+        return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i));
       }
 
       return [
@@ -149,6 +175,7 @@ export default function App() {
           key,
           id: product.id,
           name: product.name,
+          nameRu: product.nameRu || null,
           imageUrl: product.imageUrl,
           price,
           size,
@@ -158,7 +185,7 @@ export default function App() {
       ];
     });
 
-    showToast(`${product.name} savatchaga qo'shildi`);
+    showToast(t("addedToCart", localized(product, lang)));
   }
 
   function changeQty(key, qty) {
@@ -171,22 +198,16 @@ export default function App() {
   }
 
   async function toggleFavorite(product) {
-    if (!user.telegramId) return;
-
     const isFav = favoriteIds.includes(product.id);
 
-    // Darhol ko'rsatamiz, keyin serverga yozamiz
     setFavorites((prev) =>
       isFav ? prev.filter((p) => p.id !== product.id) : [product, ...prev]
     );
 
     try {
       await api.toggleFavorite(product.id);
-      showToast(
-        isFav ? "Sevimlilardan olib tashlandi" : "Sevimlilarga qo'shildi ❤️"
-      );
+      showToast(isFav ? t("favRemoved") : t("favAdded"));
     } catch {
-      // xato bo'lsa orqaga qaytaramiz
       setFavorites((prev) =>
         isFav ? [product, ...prev] : prev.filter((p) => p.id !== product.id)
       );
@@ -202,9 +223,14 @@ export default function App() {
         const tops = i.toppings || [];
 
         return {
-          key: cartKey(product.id, i.size, tops.map((t) => t.id)),
+          key: cartKey(
+            product.id,
+            i.size,
+            tops.map((x) => x.id)
+          ),
           id: product.id,
           name: product.name,
+          nameRu: product.nameRu || null,
           imageUrl: product.imageUrl,
           price: i.price,
           size: i.size || null,
@@ -215,7 +241,7 @@ export default function App() {
       .filter(Boolean);
 
     if (items.length === 0) {
-      showToast("Bu mahsulotlar hozircha mavjud emas");
+      showToast(t("itemsUnavailable"));
       return;
     }
 
@@ -227,19 +253,18 @@ export default function App() {
     const ok = await requestPhone();
 
     if (!ok) {
-      showToast("Raqamni qo'lda kiriting yoki botdagi tugmadan foydalaning");
+      showToast(t("phoneManual"));
       return;
     }
 
-    showToast("Rahmat! Raqam saqlanmoqda...");
+    showToast(t("phoneSaving"));
 
-    // Bot raqamni bazaga yozguncha biroz kutamiz
     setTimeout(async () => {
       try {
-        const fresh = await api.auth();
+        const fresh = await api.auth(lang);
         if (fresh?.phone) {
           setUser((u) => ({ ...u, phone: fresh.phone }));
-          showToast("Raqamingiz ulandi ✅");
+          showToast(t("phoneLinked"));
         }
       } catch {
         /* jim */
@@ -260,14 +285,14 @@ export default function App() {
           id: i.id,
           qty: i.qty,
           size: i.size,
-          toppingIds: (i.toppings || []).map((t) => t.id),
+          toppingIds: (i.toppings || []).map((x) => x.id),
         })),
       });
 
       setCart([]);
       setUser((u) => ({ ...u, name, phone }));
       haptic("heavy");
-      showToast("Buyurtmangiz qabul qilindi! 🍕");
+      showToast(t("orderAccepted"));
 
       setTimeout(closeApp, 1500);
     } catch (e) {
@@ -278,14 +303,19 @@ export default function App() {
   }
 
   /* ---------- Render ---------- */
+  const ctx = { lang, t, setLang: changeLang };
+
   if (!onboarded) {
     return (
-      <Onboarding
-        onFinish={() => {
-          localStorage.setItem(ONBOARDING_KEY, "1");
-          setOnboarded(true);
-        }}
-      />
+      <LangContext.Provider value={ctx}>
+        <Onboarding
+          onChangeLang={changeLang}
+          onFinish={() => {
+            localStorage.setItem(ONBOARDING_KEY, "1");
+            setOnboarded(true);
+          }}
+        />
+      </LangContext.Provider>
     );
   }
 
@@ -300,78 +330,84 @@ export default function App() {
   const cartCount = cart.reduce((n, i) => n + i.qty, 0);
 
   return (
-    <div className="app">
-      {tab === "home" && (
-        <Home
-          user={user}
-          products={products}
-          settings={settings}
-          onOpen={setSheetProduct}
+    <LangContext.Provider value={ctx}>
+      <div className="app">
+        {tab === "home" && (
+          <Home
+            user={user}
+            products={products}
+            settings={settings}
+            onOpen={setSheetProduct}
+            onAdd={addToCart}
+            goTo={setTab}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+          />
+        )}
+
+        {tab === "catalog" && (
+          <Catalog
+            products={products}
+            categories={categories}
+            onOpen={setSheetProduct}
+            onAdd={addToCart}
+            favorites={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+          />
+        )}
+
+        {tab === "cart" && (
+          <Cart
+            cart={cart}
+            products={products}
+            user={user}
+            settings={settings}
+            onChangeQty={changeQty}
+            onAdd={addToCart}
+            onRemove={removeFromCart}
+            onSubmit={submitOrder}
+            submitting={submitting}
+            goTo={setTab}
+            onRequestPhone={handleRequestPhone}
+          />
+        )}
+
+        {tab === "profile" && (
+          <Profile
+            user={user}
+            orders={orders}
+            loading={ordersLoading}
+            onReorder={reorder}
+            goTo={setTab}
+            favorites={favorites}
+            favoriteIds={favoriteIds}
+            onOpen={setSheetProduct}
+            onAdd={addToCart}
+            onToggleFavorite={toggleFavorite}
+            onChangeLang={changeLang}
+            products={products}
+          />
+        )}
+
+        <ProductSheet
+          product={sheetProduct}
+          toppings={
+            sheetProduct
+              ? toppings.filter((x) => x.category === sheetProduct.category)
+              : []
+          }
+          onClose={() => setSheetProduct(null)}
           onAdd={addToCart}
-          goTo={setTab}
-          favoriteIds={favoriteIds}
+          isFavorite={
+            sheetProduct ? favoriteIds.includes(sheetProduct.id) : false
+          }
           onToggleFavorite={toggleFavorite}
         />
-      )}
 
-      {tab === "catalog" && (
-        <Catalog
-          products={products}
-          categories={categories}
-          onOpen={setSheetProduct}
-          onAdd={addToCart}
-          favorites={favoriteIds}
-          onToggleFavorite={toggleFavorite}
-        />
-      )}
+        <BottomNav tab={tab} onChange={setTab} cartCount={cartCount} />
 
-      {tab === "cart" && (
-        <Cart
-          cart={cart}
-          products={products}
-          user={user}
-          settings={settings}
-          onChangeQty={changeQty}
-          onAdd={addToCart}
-          onRemove={removeFromCart}
-          onSubmit={submitOrder}
-          submitting={submitting}
-          goTo={setTab}
-          onRequestPhone={handleRequestPhone}
-        />
-      )}
-
-      {tab === "profile" && (
-        <Profile
-          user={user}
-          orders={orders}
-          loading={ordersLoading}
-          onReorder={reorder}
-          goTo={setTab}
-          favorites={favorites}
-          favoriteIds={favoriteIds}
-          onOpen={setSheetProduct}
-          onAdd={addToCart}
-          onToggleFavorite={toggleFavorite}
-        />
-      )}
-
-      <ProductSheet
-        product={sheetProduct}
-        toppings={
-          sheetProduct
-            ? toppings.filter((t) => t.category === sheetProduct.category)
-            : []
-        }
-        onClose={() => setSheetProduct(null)}
-        onAdd={addToCart}
-        isFavorite={sheetProduct ? favoriteIds.includes(sheetProduct.id) : false}
-        onToggleFavorite={toggleFavorite}
-      />
-
-      <BottomNav tab={tab} onChange={setTab} cartCount={cartCount} />
-
-      {toast && <div className="toast">{toast}</div>}
-    </div>
+        {toast && <div className="toast">{toast}</div>}
+      </div>
+    </LangContext.Provider>
   );
 }

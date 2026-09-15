@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, formatPrice } from "../api.js";
 
-const EMPTY = { name: "", price: "", category: "Pizza", active: true };
+const EMPTY = { name: "", nameRu: "", price: "", category: "Pizza", active: true };
 
 export default function Toppings() {
   const [rows, setRows] = useState([]);
@@ -69,6 +69,7 @@ export default function Toppings() {
               <thead>
                 <tr>
                   <th>Nomi</th>
+                  <th>Ruscha</th>
                   <th>Narxi</th>
                   <th>Kategoriya</th>
                   <th>Holati</th>
@@ -80,6 +81,7 @@ export default function Toppings() {
                 {rows.map((t) => (
                   <tr key={t.id}>
                     <td className="cell-strong">{t.name}</td>
+                    <td className="cell-muted">{t.nameRu || "—"}</td>
                     <td className="cell-price">+{formatPrice(t.price)} so'm</td>
                     <td>
                       <span className="tag">{t.category}</span>
@@ -136,6 +138,7 @@ function ToppingModal({ topping, onClose, onSaved }) {
   const [form, setForm] = useState({
     ...EMPTY,
     ...topping,
+    nameRu: topping.nameRu ?? "",
     price: topping.price ?? "",
   });
 
@@ -158,6 +161,7 @@ function ToppingModal({ topping, onClose, onSaved }) {
     try {
       const data = {
         name: form.name,
+        nameRu: form.nameRu?.trim() || null,
         price: Number(form.price),
         category: form.category,
         active: form.active,
@@ -182,13 +186,24 @@ function ToppingModal({ topping, onClose, onSaved }) {
 
         {error && <div className="error">{error}</div>}
 
-        <div className="field">
-          <label>Nomi</label>
-          <input
-            value={form.name}
-            onChange={set("name")}
-            placeholder="Qo'shimcha mozzarella"
-          />
+        <div className="field-row">
+          <div className="field">
+            <label>🇺🇿 Nomi (o'zbekcha)</label>
+            <input
+              value={form.name}
+              onChange={set("name")}
+              placeholder="Qo'shimcha mozzarella"
+            />
+          </div>
+
+          <div className="field">
+            <label>🇷🇺 Nomi (ruscha)</label>
+            <input
+              value={form.nameRu}
+              onChange={set("nameRu")}
+              placeholder="Дополнительная моцарелла"
+            />
+          </div>
         </div>
 
         <div className="field-row">

@@ -1,5 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import { prisma } from './prisma.js';
+import { t, normalizeLang, MULTILANG } from './i18n.js';
 
 const token = process.env.BOT_TOKEN;
 const shopName = process.env.SHOP_NAME || 'Pizza';
@@ -13,66 +14,96 @@ function isReady() {
   return webAppUrl.startsWith('https://');
 }
 
-function menuKeyboard() {
+function menuKeyboard(lang) {
+  const tr = t(lang);
+
   if (isReady()) {
     return Markup.keyboard([
-      [Markup.button.webApp('🍕 Buyurtma berish', webAppUrl)],
-      [Markup.button.contactRequest('📞 Raqamimni yuborish')],
+      [Markup.button.webApp(tr('orderBtn'), webAppUrl)],
+      [Markup.button.contactRequest(tr('contactBtn'))],
     ]).resize();
   }
+
   return Markup.removeKeyboard();
+}
+
+/** Foydalanuvchini bazadan topadi yoki yaratadi va tilini qaytaradi */
+async function touchUser(ctx) {
+  const telegramId = String(ctx.from.id);
+
+  const name =
+    [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') ||
+    ctx.from.username ||
+    'Mehmon';
+
+  const existing = await prisma.user.findUnique({ where: { telegramId } });
+
+  if (existing) {
+    // Telegram'dagi ism o'zgargan bo'lsa yangilaymiz
+    if (existing.name !== name) {
+      return prisma.user.update({ where: { telegramId }, data: { name } });
+    }
+    return existing;
+  }
+
+  return prisma.user.create({
+    data: { telegramId, name, lang: normalizeLang(ctx.from.language_code) },
+  });
 }
 
 if (bot) {
   bot.start(async (ctx) => {
-    const name = ctx.from.first_name || 'Mehmon';
+    const user = await touchUser(ctx);
+    const tr = t(user.lang);
 
     const text = isReady()
-      ? `Assalomu alaykum, ${name}! 👋\n\n` +
-        `${shopName} ga xush kelibsiz 🍕\n\n` +
-        `Pastdagi «🍕 Buyurtma berish» tugmasini bosing va issiqqina pizzalarni tanlang.`
-      : `Assalomu alaykum, ${name}! 👋\n\n` +
-        `${shopName} ga xush kelibsiz 🍕\n\n` +
-        `⚠️ Ilova hozircha sozlanmoqda. Iltimos, biroz kuting.`;
+      ? tr('welcome', user.name, shopName)
+      : tr('notReady', user.name, shopName);
 
-    await ctx.reply(text, menuKeyboard());
+    await ctx.reply(text, menuKeyboard(user.lang));
   });
 
   bot.command('menu', async (ctx) => {
-    await ctx.reply('Menyu 👇', menuKeyboard());
+    const user = await touchUser(ctx);
+    await ctx.reply(t(user.lang)('menu'), menuKeyboard(user.lang));
   });
 
   bot.command('id', async (ctx) => {
-    await ctx.reply(`Sizning Telegram ID'ingiz: ${ctx.from.id}`);
+    const user = await touchUser(ctx);
+    await ctx.reply(t(user.lang)('yourId', ctx.from.id));
   });
+
+  // Til almashtirish: /uz va /ru (ko'p tillilik yoqilgan bo'lsa)
+  if (MULTILANG) {
+    bot.command(['uz', 'ru'], async (ctx) => {
+      const lang = ctx.message.text.includes('ru') ? 'ru' : 'uz';
+
+      await touchUser(ctx);
+      await prisma.user.update({
+        where: { telegramId: String(ctx.from.id) },
+        data: { lang },
+      });
+
+      await ctx.reply(t(lang)('langChanged'), menuKeyboard(lang));
+    });
+  }
 
   // Mijoz telefon raqamini yuborganda bazaga saqlaymiz
   bot.on('contact', async (ctx) => {
     const phone = ctx.message.contact.phone_number;
-    const telegramId = String(ctx.from.id);
+    const user = await touchUser(ctx);
 
-    const name =
-      [ctx.from.first_name, ctx.from.last_name].filter(Boolean).join(' ') ||
-      'Mehmon';
-
-    await prisma.user.upsert({
-      where: { telegramId },
-      update: { phone },
-      create: { telegramId, name, phone },
+    await prisma.user.update({
+      where: { telegramId: String(ctx.from.id) },
+      data: { phone },
     });
 
-    await ctx.reply(
-      `Rahmat! Raqamingiz saqlandi: ${phone}\n\n` +
-        `Endi buyurtma berishda uni qayta yozish shart emas 👍`,
-      menuKeyboard()
-    );
+    await ctx.reply(t(user.lang)('phoneSaved', phone), menuKeyboard(user.lang));
   });
 
   bot.on('message', async (ctx) => {
-    await ctx.reply(
-      'Buyurtma berish uchun pastdagi tugmani bosing 👇',
-      menuKeyboard()
-    );
+    const user = await touchUser(ctx);
+    await ctx.reply(t(user.lang)('pressButton'), menuKeyboard(user.lang));
   });
 
   bot.catch((err) => {
@@ -124,26 +155,26 @@ export const STATUS_LABELS = {
   bekor: 'Bekor qilindi',
 };
 
-const STATUS_MESSAGES = {
-  tayyorlanmoqda:
-    'Buyurtmangiz tayyorlanmoqda 👨‍🍳\nOshpazlarimiz ish boshladi!',
-  yolda: "Kuryerimiz yo'lga chiqdi 🛵\nTez orada eshigingiz oldida bo'ladi.",
-  yetkazildi: 'Buyurtmangiz yetkazildi 🍕\nYoqimli ishtaha! Rahmat 💚',
-  bekor:
-    'Afsuski, buyurtmangiz bekor qilindi ❌\nSavollar bo\'lsa biz bilan bog\'laning.',
+const STATUS_KEYS = {
+  tayyorlanmoqda: 'statusCooking',
+  yolda: 'statusRoad',
+  yetkazildi: 'statusDone',
+  bekor: 'statusCancel',
 };
 
 /** Holat o'zgarganda mijozga xabar */
-export async function notifyStatus(telegramId, order) {
+export async function notifyStatus(telegramId, order, lang = 'uz') {
   if (!bot) return;
 
-  const message = STATUS_MESSAGES[order.status];
-  if (!message) return;
+  const key = STATUS_KEYS[order.status];
+  if (!key) return;
+
+  const tr = t(lang);
 
   try {
     await bot.telegram.sendMessage(
       telegramId,
-      `🧾 Buyurtma #${order.id}\n\n${message}`
+      `${tr('orderLabel', order.id)}\n\n${tr(key)}`
     );
   } catch (e) {
     console.error('[bot] holat xabari yuborilmadi:', e.message);
@@ -151,44 +182,48 @@ export async function notifyStatus(telegramId, order) {
 }
 
 /** Mijozga buyurtma qabul qilingani haqida xabar yuboradi */
-export async function notifyCustomer(telegramId, order) {
+export async function notifyCustomer(telegramId, order, lang = 'uz') {
   if (!bot) return;
+
+  const tr = t(lang);
+  const sum = tr('sum');
 
   const list = order.items
     .map((i) => {
       const size = i.size ? ` (${i.size})` : '';
       const tops = i.toppings?.length
-        ? `\n     + ${i.toppings.map((t) => t.name).join(', ')}`
+        ? `\n     + ${i.toppings.map((x) => x.name).join(', ')}`
         : '';
       return `  • ${i.name}${size} × ${i.qty} — ${fmt(
         i.price * i.qty
-      )} so'm${tops}`;
+      )} ${sum}${tops}`;
     })
     .join('\n');
 
   const rows = [
-    `Buyurtmangiz muvaffaqiyatli qabul qilindi! Kuryerimiz tez orada bog'lanadi 🍕`,
-    ``,
-    `🧾 Buyurtma raqami: #${order.id}`,
+    tr('orderAccepted'),
+    '',
+    tr('orderNumber', order.id),
     list,
-    ``,
-    `Mahsulotlar: ${fmt(order.subtotal)} so'm`,
+    '',
+    `${tr('products')}: ${fmt(order.subtotal)} ${sum}`,
   ];
 
   if (order.discount > 0) {
     rows.push(
-      `Chegirma${order.promoCode ? ` (${order.promoCode})` : ''}: −${fmt(
+      `${tr('discount')}${order.promoCode ? ` (${order.promoCode})` : ''}: −${fmt(
         order.discount
-      )} so'm`
+      )} ${sum}`
     );
   }
 
   rows.push(
-    `Yetkazib berish: ${
-      order.deliveryFee > 0 ? fmt(order.deliveryFee) + " so'm" : 'Bepul'
+    `${tr('delivery')}: ${
+      order.deliveryFee > 0 ? `${fmt(order.deliveryFee)} ${sum}` : tr('free')
     }`
   );
-  rows.push(``, `💰 Jami: ${fmt(order.total)} so'm`);
+
+  rows.push('', `${tr('total')}: ${fmt(order.total)} ${sum}`);
 
   try {
     await bot.telegram.sendMessage(telegramId, rows.join('\n'));
@@ -197,7 +232,7 @@ export async function notifyCustomer(telegramId, order) {
   }
 }
 
-/** Adminga yangi buyurtma haqida ma'lumot beradi */
+/** Adminga yangi buyurtma haqida ma'lumot beradi (doim o'zbekcha) */
 export async function notifyAdmin(order, user) {
   const adminId = process.env.ADMIN_TELEGRAM_ID;
   if (!bot || !adminId) return;
@@ -206,7 +241,7 @@ export async function notifyAdmin(order, user) {
     .map((i) => {
       const size = i.size ? ` (${i.size})` : '';
       const tops = i.toppings?.length
-        ? ` + ${i.toppings.map((t) => t.name).join(', ')}`
+        ? ` + ${i.toppings.map((x) => x.name).join(', ')}`
         : '';
       return `  • ${i.name}${size}${tops} × ${i.qty}`;
     })
@@ -266,8 +301,6 @@ export async function startBot() {
     console.log('[bot] Tunnel manzili kutilmoqda (tunnel.js uni yuboradi)...');
   }
 
-  // Kod o'zgarganda server qayta ishga tushsa, eski sessiya bilan
-  // to'qnashuv bo'lmasligi uchun xatoni yutamiz
   bot.launch({ dropPendingUpdates: true }).catch((e) => {
     console.error('[bot] polling to\'xtadi:', e.message);
   });

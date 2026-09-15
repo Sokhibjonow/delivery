@@ -158,7 +158,7 @@ ordersRouter.post('/', requireCustomer, async (req, res) => {
   }
 
   // Botdan mijozga va adminga xabar
-  notifyCustomer(user.telegramId, { ...order, items: safeItems });
+  notifyCustomer(user.telegramId, { ...order, items: safeItems }, user.lang);
   notifyAdmin({ ...order, items: safeItems }, user);
 
   res.status(201).json(order);
@@ -180,7 +180,7 @@ ordersRouter.patch('/:id/status', requireAdmin, async (req, res) => {
     });
 
     // Mijozga holat o'zgargani haqida xabar
-    notifyStatus(order.user.telegramId, order);
+    notifyStatus(order.user.telegramId, order, order.user.lang);
 
     res.json(order);
   } catch {

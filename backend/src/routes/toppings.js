@@ -20,7 +20,7 @@ toppingsRouter.get('/all', requireAdmin, async (_req, res) => {
 });
 
 toppingsRouter.post('/', requireAdmin, async (req, res) => {
-  const { name, price, category } = req.body;
+  const { name, nameRu, price, category } = req.body;
 
   if (!name || !price) {
     return res.status(400).json({ error: 'Nom va narx majburiy' });
@@ -29,6 +29,7 @@ toppingsRouter.post('/', requireAdmin, async (req, res) => {
   const t = await prisma.topping.create({
     data: {
       name: String(name),
+      nameRu: nameRu ? String(nameRu) : null,
       price: Number(price),
       category: String(category || 'Pizza'),
     },
@@ -38,13 +39,14 @@ toppingsRouter.post('/', requireAdmin, async (req, res) => {
 });
 
 toppingsRouter.put('/:id', requireAdmin, async (req, res) => {
-  const { name, price, active, category } = req.body;
+  const { name, nameRu, price, active, category } = req.body;
 
   try {
     const t = await prisma.topping.update({
       where: { id: Number(req.params.id) },
       data: {
         name: String(name),
+        nameRu: nameRu ? String(nameRu) : null,
         price: Number(price),
         active: Boolean(active),
         category: String(category || 'Pizza'),
