@@ -95,6 +95,37 @@ winget install Cloudflare.cloudflared
 
 ---
 
+## 5. Serverga joylash (24/7, kompyutersiz)
+
+Loyiha [Render.com](https://render.com) uchun tayyor (`render.yaml`). Serverda hammasi
+bitta manzildan ishlaydi:
+
+| Qism | Manzil |
+|---|---|
+| Mini App | `https://<nom>.onrender.com/` |
+| Admin panel | `https://<nom>.onrender.com/admin` |
+| Bot | webhook orqali, avtomatik |
+
+Tunnel kerak emas — manzil doimiy.
+
+**Qadamlar:**
+
+1. Kodni GitHub'ga yuklang (`git push`)
+2. render.com → **Sign up with GitHub**
+3. **New +** → **Blueprint** → `delivery` repozitoriyini tanlang
+4. So'ralgan 4 ta qiymatni kiriting (`backend/.env` faylidan nusxa oling):
+   `DATABASE_URL`, `BOT_TOKEN`, `ADMIN_PASSWORD`, `ADMIN_TELEGRAM_ID`
+5. **Apply** — 3–5 daqiqada tayyor
+
+**Muhim:**
+- Server ishlayotganda kompyuterdagi bot o'zi o'chadi (serverdagini buzmaslik uchun).
+  Kompyuterda majburan yoqish: `backend/.env` ga `FORCE_POLLING=1` — bu serverdagi botni
+  to'xtatadi.
+- Bepul rejada server 15 daqiqa ishlatilmasa uxlaydi; birinchi xabarga javob ~1 daqiqa
+  kechikadi. Doim tez ishlashi uchun **Starter** reja ($7/oy).
+
+---
+
 ## Imkoniyatlar
 
 ### Tillar

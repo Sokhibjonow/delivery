@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Telegraf, Markup } from 'telegraf';
 import { prisma } from './prisma.js';
 import { t, normalizeLang, MULTILANG } from './i18n.js';
@@ -14,18 +15,38 @@ function isReady() {
   return webAppUrl.startsWith('https://');
 }
 
+/**
+ * Pastki klaviatura. "Buyurtma berish" — oddiy matnli tugma: u manzilni
+ * o'zida saqlamaydi, shuning uchun tunnel manzili o'zgarganda eskirib qolmaydi.
+ * Bosilganda bot yangi manzilli tugmani yuboradi (openAppButton).
+ */
 function menuKeyboard(lang) {
   const tr = t(lang);
 
-  if (isReady()) {
-    return Markup.keyboard([
-      [Markup.button.webApp(tr('orderBtn'), webAppUrl)],
-      [Markup.button.contactRequest(tr('contactBtn'))],
-    ]).resize();
+  return Markup.keyboard([
+    [tr('orderBtn')],
+    [Markup.button.contactRequest(tr('contactBtn'))],
+  ]).resize();
+}
+
+/** Har doim JORIY tunnel manzili bilan Mini App tugmasi */
+function openAppButton(lang) {
+  return Markup.inlineKeyboard([
+    [Markup.button.webApp(t(lang)('openApp'), webAppUrl)],
+  ]);
+}
+
+async function sendOpenApp(ctx, lang) {
+  if (!isReady()) {
+    await ctx.reply(t(lang)('notReady', ctx.from.first_name || '', shopName));
+    return;
   }
 
-  return Markup.removeKeyboard();
+  await ctx.reply(t(lang)('openHint'), openAppButton(lang));
 }
+
+// "Buyurtma berish" tugmasining barcha tillardagi matnlari
+const ORDER_BUTTON_TEXTS = [t('uz')('orderBtn'), t('ru')('orderBtn'), '🍕 Сделать заказ'];
 
 /** Foydalanuvchini bazadan topadi yoki yaratadi va tilini qaytaradi */
 async function touchUser(ctx) {
@@ -56,16 +77,25 @@ if (bot) {
     const user = await touchUser(ctx);
     const tr = t(user.lang);
 
-    const text = isReady()
-      ? tr('welcome', user.name, shopName)
-      : tr('notReady', user.name, shopName);
+    if (!isReady()) {
+      await ctx.reply(tr('notReady', user.name, shopName), menuKeyboard(user.lang));
+      return;
+    }
 
-    await ctx.reply(text, menuKeyboard(user.lang));
+    // 1) Salomlashish + yangi klaviatura, 2) joriy manzilli ochish tugmasi
+    await ctx.reply(tr('welcome', user.name, shopName), menuKeyboard(user.lang));
+    await ctx.reply(tr('openHint'), openAppButton(user.lang));
   });
 
   bot.command('menu', async (ctx) => {
     const user = await touchUser(ctx);
-    await ctx.reply(t(user.lang)('menu'), menuKeyboard(user.lang));
+    await sendOpenApp(ctx, user.lang);
+  });
+
+  // Klaviaturadagi "Buyurtma berish" bosilganda
+  bot.hears(ORDER_BUTTON_TEXTS, async (ctx) => {
+    const user = await touchUser(ctx);
+    await sendOpenApp(ctx, user.lang);
   });
 
   bot.command('id', async (ctx) => {
@@ -103,7 +133,13 @@ if (bot) {
 
   bot.on('message', async (ctx) => {
     const user = await touchUser(ctx);
-    await ctx.reply(t(user.lang)('pressButton'), menuKeyboard(user.lang));
+
+    if (!isReady()) {
+      await ctx.reply(t(user.lang)('pressButton'), menuKeyboard(user.lang));
+      return;
+    }
+
+    await ctx.reply(t(user.lang)('openHint'), openAppButton(user.lang));
   });
 
   bot.catch((err) => {
@@ -289,10 +325,67 @@ function fmt(n) {
   return new Intl.NumberFormat('ru-RU').format(n);
 }
 
+/* ---------- Server rejimi (webhook) ---------- */
+
+/** Telegram xabarlarni yuboradigan maxfiy manzil */
+export function webhookPath() {
+  const secret =
+    process.env.WEBHOOK_SECRET ||
+    crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 32);
+
+  return `/telegram/${secret}`;
+}
+
+/** Express uchun: Telegram'dan kelgan xabarlarni botga uzatadi */
+export function webhookMiddleware() {
+  if (!bot) return (_req, _res, next) => next();
+  return bot.webhookCallback(webhookPath());
+}
+
+/** Serverda: Telegram'ga "xabarlarni shu manzilga yubor" deymiz */
+export async function startBotWebhook(publicUrl) {
+  if (!bot) {
+    console.warn('[bot] BOT_TOKEN topilmadi — bot ishga tushmadi');
+    return;
+  }
+
+  try {
+    await setWebAppUrl(publicUrl);
+    await bot.telegram.setWebhook(publicUrl + webhookPath(), {
+      allowed_updates: ['message', 'callback_query'],
+    });
+
+    const me = await bot.telegram.getMe();
+    console.log(`[bot] @${me.username} webhook rejimida ishga tushdi`);
+  } catch (e) {
+    console.error('[bot] webhook o\'rnatilmadi:', e.message);
+  }
+}
+
+/* ---------- Kompyuter rejimi (polling) ---------- */
+
 export async function startBot() {
   if (!bot) {
     console.warn('[bot] BOT_TOKEN topilmadi — bot ishga tushmadi');
     return;
+  }
+
+  // Bot serverda (webhook) ishlayotgan bo'lsa, kompyuterdagi nusxa uni
+  // to'xtatib qo'ymasligi kerak. FORCE_POLLING=1 bilan majburan yoqish mumkin.
+  try {
+    const info = await bot.telegram.getWebhookInfo();
+
+    if (info.url && process.env.FORCE_POLLING !== '1') {
+      console.warn(
+        '[bot] ⚠ Bot SERVERDA ishlayapti:',
+        info.url.replace(/\/telegram\/.*/, ''),
+        '\n[bot]   Kompyuterdagi bot yoqilmadi (serverdagini buzmaslik uchun).',
+        '\n[bot]   API va sahifalar ishlayveradi.'
+      );
+      return;
+    }
+  } catch {
+    /* tekshirib bo'lmadi — davom etamiz */
   }
 
   if (isReady()) {

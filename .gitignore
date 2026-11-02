@@ -2,3 +2,7 @@
 *.log
 node_modules/
 dist/
+
+# Maxfiy ma'lumotlar (bot tokeni, baza paroli) — hech qachon GitHub'ga yuklanmaydi
+.env
+.env.*

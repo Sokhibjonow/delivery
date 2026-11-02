@@ -1,0 +1,27 @@
+# Render.com uchun sozlama (Blueprint).
+# Render bu faylni o'qib, serverni avtomatik sozlaydi.
+# "sync: false" belgisi — qiymatni Render saytida o'zingiz kiritasiz
+# (maxfiy ma'lumotlar GitHub'ga tushmasligi uchun).
+
+services:
+  - type: web
+    name: pizza-cubick
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SHOP_NAME
+        value: Pizza Cubick
+      - key: DATABASE_URL
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false

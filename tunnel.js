@@ -73,12 +73,21 @@ async function connect(url) {
     console.error('[tunnel] .env yangilanmadi:', e.message);
   }
 
-  // 2) Backend'ga yuboramiz (u Telegram menyu tugmasini qayta sozlaydi)
+  // 2) Backend'ga yuboramiz (u Telegram menyu tugmasini qayta sozlaydi).
+  // Bu manzil admin paroli bilan himoyalangan.
+  let adminKey = 'admin123';
+  try {
+    const m = readFileSync(ENV_PATH, 'utf8').match(/^ADMIN_PASSWORD="?([^"\r\n]*)"?/m);
+    if (m) adminKey = m[1];
+  } catch {
+    /* standart parol */
+  }
+
   for (let i = 1; i <= 30; i++) {
     try {
       const res = await fetch(`${API}/api/webapp-url`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
         body: JSON.stringify({ url }),
       });
 

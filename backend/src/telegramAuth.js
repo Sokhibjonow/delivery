@@ -20,29 +20,35 @@ export function verifyInitData(initData, botToken) {
 
   params.delete('hash');
 
-  // Telegram'ning yangi versiyalari "signature" maydonini ham yuboradi,
-  // lekin u HMAC hisobiga KIRMAYDI (alohida Ed25519 imzosi).
-  params.delete('signature');
-
-  const dataCheckString = [...params.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('\n');
-
   const secret = crypto
     .createHmac('sha256', 'WebAppData')
     .update(botToken)
     .digest();
 
-  const calculated = crypto
-    .createHmac('sha256', secret)
-    .update(dataCheckString)
-    .digest('hex');
+  const sign = (entries) =>
+    crypto
+      .createHmac('sha256', secret)
+      .update(
+        entries
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([k, v]) => `${k}=${v}`)
+          .join('\n')
+      )
+      .digest('hex');
 
-  if (calculated !== hash) {
+  const all = [...params.entries()];
+
+  // Telegram "hash"ni "hash"dan boshqa BARCHA maydonlar (shu jumladan
+  // "signature") bo'yicha hisoblaydi. Ehtiyot uchun "signature"siz variantni
+  // ham tekshiramiz — ikkalasi ham faqat bot tokeni bilan yasalishi mumkin.
+  const valid =
+    sign([...all]) === hash ||
+    sign(all.filter(([k]) => k !== 'signature')) === hash;
+
+  if (!valid) {
     console.warn(
       '[auth] initData IMZOSI MOS KELMADI. Maydonlar:',
-      [...params.keys()].join(', ')
+      all.map(([k]) => k).join(', ')
     );
     return null;
   }

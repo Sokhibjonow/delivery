@@ -26,6 +26,8 @@ const MESSAGES = {
       `Endi buyurtma berishda uni qayta yozish shart emas 👍`,
     pressButton: 'Buyurtma berish uchun pastdagi tugmani bosing 👇',
     langChanged: 'Til o\'zgartirildi ✅',
+    openApp: '🍕 Menyuni ochish',
+    openHint: 'Menyuni ochish uchun quyidagi tugmani bosing 👇',
 
     orderAccepted:
       'Buyurtmangiz muvaffaqiyatli qabul qilindi! Kuryerimiz tez orada bog\'lanadi 🍕',
@@ -63,6 +65,8 @@ const MESSAGES = {
       `Теперь при заказе его не нужно вводить заново 👍`,
     pressButton: 'Чтобы сделать заказ, нажмите кнопку ниже 👇',
     langChanged: 'Язык изменён ✅',
+    openApp: '🍕 Открыть меню',
+    openHint: 'Чтобы открыть меню, нажмите кнопку ниже 👇',
 
     orderAccepted:
       'Ваш заказ успешно принят! Курьер свяжется с вами в ближайшее время 🍕',

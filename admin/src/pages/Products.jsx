@@ -6,7 +6,7 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(null); // null = yopiq, {} = yangi
+  const [editing, setEditing] = useState(null); 
 
   const load = useCallback(async () => {
     setLoading(true);
