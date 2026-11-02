@@ -23,6 +23,7 @@ import {
 } from './bot.js';
 import { identify } from './telegramAuth.js';
 import { requireAdmin } from './auth.js';
+import { warmUpDatabase } from './prisma.js';
 
 // Kutilmagan xato tufayli server butunlay o'chib qolmasligi uchun
 process.on('unhandledRejection', (err) => {
@@ -114,6 +115,9 @@ const PORT = Number(process.env.PORT) || 4000;
 
 app.listen(PORT, () => {
   console.log(`[api] port ${PORT} da ishlamoqda`);
+
+  // Bazani oldindan uyg'otamiz (Neon uxlab qolgan bo'lishi mumkin)
+  warmUpDatabase();
 
   if (IS_SERVER) {
     console.log(`[api] Server rejimi: ${PUBLIC_URL}`);
