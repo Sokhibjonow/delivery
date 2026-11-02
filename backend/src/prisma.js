@@ -6,7 +6,21 @@ import { PrismaClient } from '@prisma/client';
  * 5 soniya — shuning uchun birinchi so'rov "Can't reach database server"
  * xatosi bilan uzilardi. Kutish vaqtini uzaytiramiz.
  */
-function withTimeouts(url) {
+/**
+ * Manzilni tozalaydi: ortiqcha bo'shliq va qo'shtirnoqlarni olib tashlaydi.
+ * Server sozlamalariga qiymat nusxalanganda qo'shtirnoqlar ham tushib
+ * qolishi mumkin — u holda Prisma manzilni tanimaydi.
+ */
+function clean(url) {
+  return String(url || '')
+    .trim()
+    .replace(/^['"]+/, '')
+    .replace(/['"]+$/, '')
+    .trim();
+}
+
+function withTimeouts(raw) {
+  const url = clean(raw);
   if (!url) return url;
 
   try {
@@ -27,9 +41,18 @@ function withTimeouts(url) {
   }
 }
 
-export const prisma = new PrismaClient({
-  datasourceUrl: withTimeouts(process.env.DATABASE_URL),
-});
+const DB_URL = withTimeouts(process.env.DATABASE_URL);
+
+// Manzil noto'g'ri bo'lsa, parolni oshkor qilmasdan ogohlantiramiz
+if (!/^postgres(ql)?:\/\//.test(DB_URL)) {
+  console.error(
+    '[db] DATABASE_URL noto\'g\'ri! ' +
+      `uzunligi=${DB_URL.length}, boshlanishi="${DB_URL.slice(0, 12)}"` +
+      ' — u "postgresql://" bilan boshlanishi kerak.'
+  );
+}
+
+export const prisma = new PrismaClient({ datasourceUrl: DB_URL });
 
 /**
  * Server ishga tushganda bazani oldindan uyg'otadi — shunda birinchi

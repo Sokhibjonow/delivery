@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { notifyCustomer, notifyAdmin, notifyStatus } from '../bot.js';
 import { getSettings, isOpenNow } from './settings.js';
@@ -6,7 +6,7 @@ import { calcDiscount } from './promo.js';
 import { requireAdmin } from '../auth.js';
 import { requireCustomer } from '../telegramAuth.js';
 
-export const ordersRouter = Router();
+export const ordersRouter = asyncRouter();
 
 const STATUSES = ['yangi', 'tayyorlanmoqda', 'yolda', 'yetkazildi', 'bekor'];
 

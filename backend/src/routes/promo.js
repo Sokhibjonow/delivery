@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireAdmin } from '../auth.js';
 
-export const promoRouter = Router();
+export const promoRouter = asyncRouter();
 
 /** Promokod bo'yicha chegirmani hisoblaydi */
 export async function calcDiscount(code, subtotal) {

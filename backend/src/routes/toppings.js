@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireAdmin } from '../auth.js';
 
-export const toppingsRouter = Router();
+export const toppingsRouter = asyncRouter();
 
 /** Faol qo'shimchalar ro'yxati */
 toppingsRouter.get('/', async (_req, res) => {

@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireAdmin } from '../auth.js';
 
-export const settingsRouter = Router();
+export const settingsRouter = asyncRouter();
 
 /** Sozlamalarni oladi (bo'lmasa yaratadi) */
 export async function getSettings() {

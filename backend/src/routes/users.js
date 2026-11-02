@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireCustomer } from '../telegramAuth.js';
 import { normalizeLang } from '../i18n.js';
 
-export const usersRouter = Router();
+export const usersRouter = asyncRouter();
 
 /**
  * Mini App ochilganda mijozni bazaga yozadi / yangilaydi.

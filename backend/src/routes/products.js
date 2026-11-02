@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireAdmin } from '../auth.js';
 
-export const productsRouter = Router();
+export const productsRouter = asyncRouter();
 
 /** Barcha mahsulotlar (ixtiyoriy ?category=Pizza) */
 productsRouter.get('/', async (req, res) => {

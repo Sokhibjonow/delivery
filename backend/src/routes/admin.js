@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireAdmin, adminPassword } from '../auth.js';
 import { broadcast } from '../bot.js';
 
-export const adminRouter = Router();
+export const adminRouter = asyncRouter();
 
 /** Parolni tekshirish */
 adminRouter.post('/login', (req, res) => {

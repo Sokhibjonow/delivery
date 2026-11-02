@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../asyncRouter.js';
 import { prisma } from '../prisma.js';
 import { requireCustomer } from '../telegramAuth.js';
 
-export const favoritesRouter = Router();
+export const favoritesRouter = asyncRouter();
 
 /** Faqat so'rov yuborayotgan mijozning o'z sevimlilari */
 favoritesRouter.get('/', requireCustomer, async (req, res) => {
